@@ -1,0 +1,27 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width,initial-scale=1.0">
+    <link rel="icon" href="<%= BASE_URL %>favicon.ico">
+    <title>Fingerprint Attendance System</title>
+
+    <!-- ES6 Shim for compatibility -->
+    <script src="/js/es6-shim.js"></script>
+
+    <!-- DigitalPersona Fingerprint SDK -->
+    <script src="/js/fingerprint.sdk.min.js"></script>
+    <script src="/js/websdk.client.bundle.min.js"></script>
+
+    <!-- Alternative: Load from SDK server if available -->
+    <!-- <script src="http://localhost:8000/ua-ws-sdk.js"></script> -->
+  </head>
+  <body>
+    <noscript>
+      <strong>We're sorry but Fingerprint Attendance System doesn't work properly without JavaScript enabled. Please enable it to continue.</strong>
+    </noscript>
+    <div id="app"></div>
+    <!-- built files will be auto injected -->
+  </body>
+</html>

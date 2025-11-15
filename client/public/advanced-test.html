@@ -1,0 +1,267 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8" />
+    <title>Advanced Fingerprint SDK Test</title>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 20px; }
+        .status { padding: 10px; margin: 10px 0; border-radius: 5px; }
+        .success { background: #d4edda; color: #155724; border: 1px solid #c3e6cb; }
+        .error { background: #f8d7da; color: #721c24; border: 1px solid #f5c6cb; }
+        .info { background: #cce7ff; color: #004085; border: 1px solid #b8daff; }
+        .warning { background: #fff3cd; color: #856404; border: 1px solid #ffeaa7; }
+        button { padding: 10px 20px; margin: 5px; cursor: pointer; }
+        #results { margin-top: 20px; }
+        .code { background: #f8f9fa; padding: 10px; border-radius: 5px; font-family: monospace; margin: 10px 0; }
+    </style>
+</head>
+<body>
+    <h1>Advanced Fingerprint SDK Test</h1>
+
+    <div id="status" class="status info">Testing fingerprint SDK...</div>
+
+    <div>
+        <button onclick="testMultiplePorts()">Test Multiple Ports</button>
+        <button onclick="testSDKFullFlow()">Test Full SDK Flow</button>
+        <button onclick="inspectSDK()">Inspect SDK Objects</button>
+    </div>
+
+    <div id="results"></div>
+
+    <!-- ES6 Shim for compatibility -->
+    <script src="/js/es6-shim.js"></script>
+
+    <!-- DigitalPersona Fingerprint SDK -->
+    <script src="/js/fingerprint.sdk.min.js"></script>
+    <script src="/js/websdk.client.bundle.min.js"></script>
+
+    <script>
+        let sdk = null;
+        let results = document.getElementById('results');
+
+        function updateStatus(message, type = 'info') {
+            const status = document.getElementById('status');
+            status.className = `status ${type}`;
+            status.innerHTML = message;
+        }
+
+        function addResult(message, type = 'info') {
+            const div = document.createElement('div');
+            div.className = `status ${type}`;
+            div.innerHTML = message;
+            results.appendChild(div);
+        }
+
+        function addCodeBlock(code, title = 'Code:') {
+            const div = document.createElement('div');
+            div.innerHTML = `<h4>${title}</h4><div class="code">${code}</div>`;
+            results.appendChild(div);
+        }
+
+        function testMultiplePorts() {
+            addResult('<h3>Testing Multiple WebSocket Ports...</h3>', 'info');
+
+            const ports = [8000, 8001, 8080, 8081, 9000, 9001, 3000, 3001];
+            let completedTests = 0;
+            let workingPorts = [];
+
+            ports.forEach(port => {
+                const ws = new WebSocket(`ws://localhost:${port}`);
+
+                ws.onopen = function() {
+                    workingPorts.push(port);
+                    addResult(`✅ WebSocket connection successful on ws://localhost:${port}`, 'success');
+                    ws.close();
+                };
+
+                ws.onerror = function(error) {
+                    addResult(`❌ WebSocket failed on ws://localhost:${port}`, 'error');
+                };
+
+                ws.onclose = function() {
+                    completedTests++;
+                    if (completedTests === ports.length) {
+                        if (workingPorts.length > 0) {
+                            addResult(`Found working WebSocket ports: ${workingPorts.join(', ')}`, 'success');
+                        } else {
+                            addResult('No working WebSocket ports found', 'error');
+                        }
+                    }
+                };
+
+                // Timeout after 3 seconds
+                setTimeout(() => {
+                    if (ws.readyState === WebSocket.CONNECTING) {
+                        ws.close();
+                        addResult(`⏰ Timeout on ws://localhost:${port}`, 'warning');
+                    }
+                    completedTests++;
+                }, 3000);
+            });
+        }
+
+        function inspectSDK() {
+            addResult('<h3>Inspecting SDK Objects...</h3>', 'info');
+
+            if (typeof Fingerprint !== 'undefined') {
+                addCodeBlock(`typeof Fingerprint: ${typeof Fingerprint}`, 'Fingerprint Object');
+
+                if (typeof Fingerprint.WebApi !== 'undefined') {
+                    addCodeBlock(`typeof Fingerprint.WebApi: ${typeof Fingerprint.WebApi}`, 'WebApi Object');
+
+                    // List all properties
+                    const props = Object.getOwnPropertyNames(Fingerprint.WebApi);
+                    addCodeBlock(`WebApi properties: ${props.join(', ')}`, 'WebApi Properties');
+
+                    // Check if WebApi is a constructor
+                    if (typeof Fingerprint.WebApi === 'function') {
+                        addResult('✅ Fingerprint.WebApi is a constructor function', 'success');
+                    }
+                }
+
+                if (typeof Fingerprint.SampleFormat !== 'undefined') {
+                    const formats = Object.keys(Fingerprint.SampleFormat);
+                    addCodeBlock(`Sample formats: ${formats.join(', ')}`, 'Sample Formats');
+                }
+            }
+        }
+
+        function testSDKFullFlow() {
+            addResult('<h3>Testing Full SDK Flow...</h3>', 'info');
+
+            if (typeof Fingerprint === 'undefined') {
+                addResult('❌ Fingerprint SDK not loaded', 'error');
+                return;
+            }
+
+            try {
+                sdk = new Fingerprint.WebApi();
+                addResult('✅ Created WebApi instance', 'success');
+
+                // Add event listeners with detailed logging
+                sdk.onDeviceConnected = function(e) {
+                    addResult(`🔗 Device connected: ${JSON.stringify(e)}`, 'success');
+                };
+
+                sdk.onDeviceDisconnected = function(e) {
+                    addResult(`🔌 Device disconnected: ${JSON.stringify(e)}`, 'warning');
+                };
+
+                sdk.onCommunicationFailed = function(e) {
+                    addResult(`❌ Communication failed: ${JSON.stringify(e)}`, 'error');
+                };
+
+                // Test device enumeration
+                sdk.enumerateDevices().then(function(devices) {
+                    addResult(`✅ Found ${devices.length} device(s)`, 'success');
+
+                    devices.forEach((device, index) => {
+                        addResult(`Device ${index + 1}: ${device}`, 'info');
+
+                        // Try to get device info
+                        sdk.getDeviceInfo(device).then(function(info) {
+                            addResult(`Device info: ${JSON.stringify(info)}`, 'info');
+                        }).catch(function(error) {
+                            addResult(`❌ Error getting device info: ${error.message}`, 'error');
+                        });
+                    });
+
+                    if (devices.length > 0) {
+                        // Try to start acquisition
+                        testAcquisition(devices[0]);
+                    }
+
+                }).catch(function(error) {
+                    addResult(`❌ Error enumerating devices: ${error.message}`, 'error');
+                });
+
+            } catch (error) {
+                addResult(`❌ SDK initialization error: ${error.message}`, 'error');
+                addResult(`Stack trace: ${error.stack}`, 'error');
+            }
+        }
+
+        function testAcquisition(deviceId) {
+            addResult('<h4>Testing Acquisition...</h4>', 'info');
+
+            // Add sample acquisition handler
+            sdk.onSamplesAcquired = function(s) {
+                addResult(`📸 Sample acquired: ${JSON.stringify(s)}`, 'success');
+
+                try {
+                    const samples = JSON.parse(s.samples);
+                    addResult(`✅ Parsed ${samples.length} sample(s)`, 'success');
+
+                    if (samples.length > 0) {
+                        addResult(`Sample 0 type: ${typeof samples[0]}`, 'info');
+                        if (typeof samples[0] === 'string') {
+                            addResult(`Sample 0 length: ${samples[0].length} characters`, 'info');
+                        }
+                    }
+                } catch (parseError) {
+                    addResult(`❌ Error parsing samples: ${parseError.message}`, 'error');
+                }
+            };
+
+            // Add quality reporting handler
+            sdk.onQualityReported = function(e) {
+                const qualityText = getQualityText(e.quality);
+                addResult(`📊 Quality reported: ${e.quality} (${qualityText})`, 'info');
+            };
+
+            // Try to start acquisition with PNG format
+            const format = Fingerprint.SampleFormat.PngImage;
+            addResult(`Starting acquisition with format: ${format}`, 'info');
+
+            sdk.startAcquisition(format, deviceId).then(function() {
+                addResult('✅ Acquisition started successfully', 'success');
+                addResult('Place your finger on the scanner...', 'info');
+
+                // Stop acquisition after 10 seconds
+                setTimeout(() => {
+                    sdk.stopAcquisition().then(function() {
+                        addResult('⏹️ Acquisition stopped', 'info');
+                    }).catch(function(error) {
+                        addResult(`❌ Error stopping acquisition: ${error.message}`, 'error');
+                    });
+                }, 10000);
+
+            }).catch(function(error) {
+                addResult(`❌ Error starting acquisition: ${error.message}`, 'error');
+            });
+        }
+
+        function getQualityText(qualityCode) {
+            const qualityCodes = {
+                0: 'Good',
+                1: 'TooLight',
+                2: 'TooDark',
+                3: 'TooNoisy',
+                4: 'LowContrast',
+                5: 'NotCentered',
+                6: 'TooHigh',
+                7: 'TooLow',
+                8: 'TooLeft',
+                9: 'TooRight',
+                10: 'TooFast',
+                11: 'TooSlow',
+                12: 'TooSkewed',
+                13: 'TooShort',
+                14: 'WetFinger',
+                15: 'FakeFinger',
+                16: 'PressureTooHard',
+                17: 'PressureTooLight',
+                18: 'TooSmall',
+                19: 'TooLarge'
+            }
+            return qualityCodes[qualityCode] || `Unknown (${qualityCode})`;
+        }
+
+        // Auto-test on page load
+        window.onload = function() {
+            addResult('Advanced Fingerprint SDK Test Page Loaded', 'info');
+            inspectSDK();
+        };
+    </script>
+</body>
+</html>

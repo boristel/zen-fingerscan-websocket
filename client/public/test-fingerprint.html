@@ -1,0 +1,142 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8" />
+    <title>Fingerprint SDK Test</title>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 20px; }
+        .status { padding: 10px; margin: 10px 0; border-radius: 5px; }
+        .success { background: #d4edda; color: #155724; border: 1px solid #c3e6cb; }
+        .error { background: #f8d7da; color: #721c24; border: 1px solid #f5c6cb; }
+        .info { background: #cce7ff; color: #004085; border: 1px solid #b8daff; }
+        button { padding: 10px 20px; margin: 5px; cursor: pointer; }
+        #results { margin-top: 20px; }
+    </style>
+</head>
+<body>
+    <h1>Fingerprint SDK Connection Test</h1>
+
+    <div id="status" class="status info">Testing fingerprint SDK...</div>
+
+    <div>
+        <button onclick="testSDKConnection()">Test SDK Connection</button>
+        <button onclick="enumerateDevices()">Enumerate Devices</button>
+        <button onclick="testWebSocket()">Test WebSocket</button>
+    </div>
+
+    <div id="results"></div>
+
+    <!-- ES6 Shim for compatibility -->
+    <script src="/js/es6-shim.js"></script>
+
+    <!-- DigitalPersona Fingerprint SDK -->
+    <script src="/js/fingerprint.sdk.min.js"></script>
+    <script src="/js/websdk.client.bundle.min.js"></script>
+
+    <script>
+        let sdk = null;
+        let results = document.getElementById('results');
+
+        function updateStatus(message, type = 'info') {
+            const status = document.getElementById('status');
+            status.className = `status ${type}`;
+            status.innerHTML = message;
+        }
+
+        function addResult(message, type = 'info') {
+            const div = document.createElement('div');
+            div.className = `status ${type}`;
+            div.innerHTML = message;
+            results.appendChild(div);
+        }
+
+        function testSDKConnection() {
+            addResult('<h3>Testing SDK Connection...</h3>', 'info');
+
+            // Check if Fingerprint SDK is loaded
+            if (typeof Fingerprint === 'undefined') {
+                addResult('❌ Fingerprint SDK not loaded', 'error');
+                return;
+            }
+
+            if (typeof Fingerprint.WebApi === 'undefined') {
+                addResult('❌ Fingerprint WebApi not available', 'error');
+                return;
+            }
+
+            addResult('✅ Fingerprint SDK loaded successfully', 'success');
+
+            try {
+                sdk = new Fingerprint.WebApi();
+                addResult('✅ Fingerprint WebApi instance created', 'success');
+            } catch (error) {
+                addResult(`❌ Error creating WebApi instance: ${error.message}`, 'error');
+            }
+        }
+
+        function enumerateDevices() {
+            if (!sdk) {
+                addResult('❌ SDK not initialized. Test SDK Connection first.', 'error');
+                return;
+            }
+
+            addResult('<h3>Enumerating Devices...</h3>', 'info');
+
+            sdk.enumerateDevices().then(function(devices) {
+                addResult(`✅ Found ${devices.length} device(s)`, 'success');
+
+                if (devices.length > 0) {
+                    devices.forEach((device, index) => {
+                        addResult(`Device ${index + 1}: ${device}`, 'info');
+                    });
+                } else {
+                    addResult('No devices found. Please check your fingerprint scanner connection.', 'error');
+                }
+            }).catch(function(error) {
+                addResult(`❌ Error enumerating devices: ${error.message}`, 'error');
+            });
+        }
+
+        function testWebSocket() {
+            addResult('<h3>Testing WebSocket Connection...</h3>', 'info');
+
+            try {
+                const ws = new WebSocket('ws://localhost:8000');
+
+                ws.onopen = function() {
+                    addResult('✅ WebSocket connection to ws://localhost:8000 successful', 'success');
+                    ws.close();
+                };
+
+                ws.onerror = function(error) {
+                    addResult(`❌ WebSocket connection failed: ${error}`, 'error');
+                    addResult('💡 Make sure the U.areU Web SDK Server is running on port 8000', 'info');
+                };
+
+                ws.onclose = function(event) {
+                    if (event.code !== 1000) {
+                        addResult(`⚠️ WebSocket closed with code: ${event.code}`, 'error');
+                    }
+                };
+
+                // Timeout after 5 seconds
+                setTimeout(() => {
+                    if (ws.readyState === WebSocket.CONNECTING) {
+                        ws.close();
+                        addResult('❌ WebSocket connection timeout', 'error');
+                    }
+                }, 5000);
+
+            } catch (error) {
+                addResult(`❌ WebSocket error: ${error.message}`, 'error');
+            }
+        }
+
+        // Auto-test on page load
+        window.onload = function() {
+            addResult('Fingerprint SDK Test Page Loaded', 'info');
+            testWebSocket();
+        };
+    </script>
+</body>
+</html>

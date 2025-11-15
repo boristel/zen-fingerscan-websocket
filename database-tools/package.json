@@ -1,0 +1,31 @@
+{
+  "name": "mysql-cli-tool",
+  "version": "1.0.0",
+  "description": "Simple CLI tool for MySQL database management",
+  "main": "mysql-cli.js",
+  "bin": {
+    "mysql-cli": "./mysql-cli.js"
+  },
+  "scripts": {
+    "start": "node mysql-cli.js --help",
+    "test": "node mysql-cli.js --test",
+    "tables": "node mysql-cli.js --tables",
+    "fingerprints": "node mysql-cli.js --fingerprints",
+    "stats": "node mysql-cli.js --stats"
+  },
+  "keywords": [
+    "mysql",
+    "database",
+    "cli",
+    "management"
+  ],
+  "author": "Database CLI Tool",
+  "license": "MIT",
+  "dependencies": {
+    "mysql2": "^3.6.5",
+    "dotenv": "^16.3.1"
+  },
+  "engines": {
+    "node": ">=14.0.0"
+  }
+}
