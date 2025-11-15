@@ -164,7 +164,7 @@ app.get('/api/test-simple', async (req, res) => {
         message: 'API connection test successful',
         timestamp: new Date().toISOString(),
         serverInfo: {
-            port: 50001,
+            port: parseInt(process.env.PORT) || 3000,
             status: 'running'
         }
     })
@@ -534,15 +534,15 @@ app.use((error, req, res, next) => {
 async function startServer() {
     await initializeDatabase();
 
-    // Find an available port starting from PORT
-    const availablePort = await findAvailablePort(PORT || 3003);
+    // Use the PORT from environment or default to 3000
+    const serverPort = parseInt(process.env.PORT) || 3000;
 
-    app.listen(availablePort, () => {
-        console.log(`🚀 Server running on port ${availablePort}`);
-        console.log(`📱 API Base URL: http://localhost:${availablePort}/api`);
-        console.log(`🌐 Frontend URL: http://localhost:${availablePort}`);
+    app.listen(serverPort, () => {
+        console.log(`🚀 Server running on port ${serverPort}`);
+        console.log(`📱 API Base URL: http://localhost:${serverPort}/api`);
+        console.log(`🌐 Frontend URL: http://localhost:${serverPort}`);
         console.log('📊 Database connected: bc_zen');
-        console.log(`🔗 Make sure to update Vue config proxy to port ${availablePort}`);
+        console.log(`🔗 Make sure to update Vue config proxy to port ${serverPort}`);
     });
 }
 
