@@ -43,6 +43,106 @@ async function initializeDatabase() {
     }
 }
 
+// Root route - Welcome page
+app.get('/', (req, res) => {
+    res.send(`
+        <!DOCTYPE html>
+        <html>
+        <head>
+            <title>Fingerprint Attendance System</title>
+            <style>
+                body {
+                    font-family: Arial, sans-serif;
+                    max-width: 800px;
+                    margin: 50px auto;
+                    padding: 20px;
+                    background-color: #f5f5f5;
+                }
+                .container {
+                    background: white;
+                    padding: 30px;
+                    border-radius: 10px;
+                    box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+                }
+                h1 {
+                    color: #2c3e50;
+                    text-align: center;
+                }
+                .status {
+                    background: #d4edda;
+                    color: #155724;
+                    padding: 15px;
+                    border-radius: 5px;
+                    margin: 20px 0;
+                }
+                .api-info {
+                    background: #e7f3ff;
+                    padding: 15px;
+                    border-radius: 5px;
+                    margin: 20px 0;
+                }
+                .test-links {
+                    text-align: center;
+                    margin: 30px 0;
+                }
+                .test-links a {
+                    display: inline-block;
+                    margin: 10px;
+                    padding: 10px 20px;
+                    background: #007bff;
+                    color: white;
+                    text-decoration: none;
+                    border-radius: 5px;
+                }
+                .test-links a:hover {
+                    background: #0056b3;
+                }
+            </style>
+        </head>
+        <body>
+            <div class="container">
+                <h1>🔐 Fingerprint Attendance System</h1>
+                <div class="status">
+                    ✅ <strong>Server is running successfully!</strong><br>
+                    ✅ Database connection established<br>
+                    ✅ Fingerprint verification system active
+                </div>
+
+                <div class="api-info">
+                    <h3>🌐 API Information</h3>
+                    <p><strong>Base URL:</strong> http://localhost:50003/api</p>
+                    <p><strong>Status:</strong> All systems operational</p>
+                </div>
+
+                <div class="test-links">
+                    <h3>🧪 Test API Endpoints</h3>
+                    <a href="/api/test-simple">Test Simple API</a>
+                    <a href="/api/test-connection">Test Database Connection</a>
+                </div>
+
+                <div class="api-info">
+                    <h3>📋 Available API Endpoints</h3>
+                    <ul>
+                        <li><strong>GET /api/test-simple</strong> - Simple API test</li>
+                        <li><strong>GET /api/test-connection</strong> - Database connection test</li>
+                        <li><strong>POST /api/search-employee</strong> - Search employees</li>
+                        <li><strong>POST /api/register-fingerprint</strong> - Register fingerprint</li>
+                        <li><strong>POST /api/attendance/checkin</strong> - Check-in with fingerprint</li>
+                        <li><strong>GET /api/attendance/today</strong> - Get today's attendance</li>
+                    </ul>
+                </div>
+
+                <div class="api-info">
+                    <h3>🚀 Vue.js Frontend</h3>
+                    <p><strong>Frontend URL:</strong> <a href="http://localhost:8080" target="_blank">http://localhost:8080</a></p>
+                    <p><em>(If Vue frontend is running on port 8080)</em></p>
+                </div>
+            </div>
+        </body>
+        </html>
+    `);
+});
+
 // API Routes
 
 // Test database connection
