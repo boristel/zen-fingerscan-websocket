@@ -1362,83 +1362,54 @@ app.post('/api/store-attendance', async (req, res) => {
             fingerindexMatched
         });
 
-        // Store attendance record using a simple approach - store in logs table or existing structure
-        // Since we don't have a dedicated attendance table, we'll create a log entry
+        // Store attendance record in absen_harian table
         const attendanceDateTime = new Date();
         const attendanceDate = attendanceDateTime.toISOString().split('T')[0]; // YYYY-MM-DD
         const attendanceTime = attendanceDateTime.toTimeString().split(' ')[0]; // HH:MM:SS
 
-        console.log('📝 Storing attendance record with timestamp:', attendanceDateTime);
+        console.log('📝 Storing attendance record in absen_harian table:', attendanceDateTime);
 
-        // For now, let's store it in a simple way by inserting into a new table or logging it
-        // We'll create a temporary table if it doesn't exist, or log the attendance
+        // Determine status based on attendance type
+        const status = attendanceType === 'CHECK_IN' ? 'IN' : 'OUT';
+
         try {
-            // Try to create a simple attendance log table if it doesn't exist
-            const createTableQuery = `
-                CREATE TABLE IF NOT EXISTS attendance_logs (
-                    id INT AUTO_INCREMENT PRIMARY KEY,
-                    karyawanid VARCHAR(5) NOT NULL,
-                    kodekaryawan VARCHAR(30) NOT NULL,
-                    namakaryawan VARCHAR(255) NOT NULL,
-                    attendance_type VARCHAR(10) NOT NULL,
-                    attendance_date DATE NOT NULL,
-                    attendance_time TIME NOT NULL,
-                    datetime DATETIME NOT NULL,
-                    fingerprint_verified BOOLEAN DEFAULT TRUE,
-                    verification_similarity DECIMAL(5,2),
-                    verification_time_ms INT,
-                    fingerindex_matched INT,
-                    notes VARCHAR(255),
-                    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-                    INDEX idx_karyawanid (karyawanid),
-                    INDEX idx_attendance_date (attendance_date)
-                ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
-            `;
-
-            await db.execute(createTableQuery);
-            console.log('✅ Attendance logs table ready');
-
-            // Insert attendance record
+            // Insert attendance record into absen_harian table
             const insertQuery = `
-                INSERT INTO attendance_logs (
-                    karyawanid, kodekaryawan, namakaryawan, attendance_type,
-                    attendance_date, attendance_time, datetime, fingerprint_verified,
-                    verification_similarity, verification_time_ms, fingerindex_matched, notes
-                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                INSERT INTO absen_harian (
+                    id_karyawan, nama, tanggal, waktu, status, notes
+                ) VALUES (?, ?, ?, ?, ?, ?)
             `;
 
             const [result] = await db.execute(insertQuery, [
-                karyawanid,
-                kodekaryawan,
-                namakaryawan,
-                attendanceType,
-                attendanceDate,
-                attendanceTime,
-                attendanceDateTime,
-                fingerprintVerified || false,
-                verificationSimilarity || null,
-                verificationTime || null,
-                fingerindexMatched || null,
-                notes || null
+                karyawanid,           // id_karyawan from ben_hrd_karyawan_info.idkaryawan
+                namakaryawan,         // nama from ben_hrd_karyawan_info.namakaryawan
+                attendanceDate,       // current_date with format "yyyy-MM-dd"
+                attendanceTime,       // current_time with format "hh:mm:ss"
+                status,               // "IN" for checkIn, "OUT" for checkOut
+                notes || null         // optional notes
             ]);
 
-            console.log('✅ Attendance record stored successfully:', {
+            console.log('✅ Attendance record stored successfully in absen_harian:', {
                 insertId: result.insertId,
-                affectedRows: result.affectedRows
+                affectedRows: result.affectedRows,
+                id_karyawan: karyawanid,
+                nama: namakaryawan,
+                tanggal: attendanceDate,
+                waktu: attendanceTime,
+                status: status
             });
 
             // Return success response
             res.json({
                 success: true,
-                message: `Attendance recorded successfully for ${namakaryawan} (${attendanceType})`,
+                message: `Attendance recorded successfully for ${namakaryawan} (${status})`,
                 data: {
-                    karyawanid,
-                    kodekaryawan,
-                    namakaryawan,
-                    attendanceType,
-                    attendanceDate,
-                    attendanceTime,
-                    datetime: attendanceDateTime,
+                    id_karyawan: karyawanid,
+                    nama: namakaryawan,
+                    tanggal: attendanceDate,
+                    waktu: attendanceTime,
+                    status: status,
+                    attendanceType: attendanceType,
                     fingerprintVerified: fingerprintVerified || false,
                     verificationSimilarity,
                     verificationTime,
@@ -1448,35 +1419,12 @@ app.post('/api/store-attendance', async (req, res) => {
             });
 
         } catch (tableError) {
-            console.warn('⚠️ Could not create attendance logs table:', tableError.message);
+            console.error('❌ Error inserting into absen_harian table:', tableError);
 
-            // Fallback: Just log the attendance and return success
-            console.log('📝 Attendance logged (fallback mode):', {
-                karyawanid,
-                kodekaryawan,
-                namakaryawan,
-                attendanceType,
-                datetime: attendanceDateTime,
-                fingerprintVerified
-            });
-
-            res.json({
-                success: true,
-                message: `Attendance recorded for ${namakaryawan} (${attendanceType})`,
-                data: {
-                    karyawanid,
-                    kodekaryawan,
-                    namakaryawan,
-                    attendanceType,
-                    attendanceDate,
-                    attendanceTime,
-                    datetime: attendanceDateTime,
-                    fingerprintVerified: fingerprintVerified || false,
-                    verificationSimilarity,
-                    verificationTime,
-                    fingerindexMatched,
-                    mode: 'logged_only'
-                }
+            res.status(500).json({
+                success: false,
+                message: 'Failed to store attendance record in absen_harian table',
+                error: tableError.message
             });
         }
 

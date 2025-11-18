@@ -702,6 +702,31 @@ export default {
       }
     }
 
+    const stopFingerprintDevice = async () => {
+      try {
+        console.log('🛑 Stopping fingerprint device...')
+        const serviceToUse = usingMockService.value ? mockFingerprintService : fingerprintService
+        await serviceToUse.stopAcquisition()
+        console.log('✅ Fingerprint device stopped')
+      } catch (error) {
+        console.warn('⚠️ Error stopping fingerprint device:', error)
+      }
+    }
+
+    const showSuccessNotificationAndReset = async (message) => {
+      // Show success notification
+      showStatus(message, 'success')
+
+      // Stop fingerprint device
+      await stopFingerprintDevice()
+
+      // Wait for 2-3 seconds, then reset for next employee
+      setTimeout(() => {
+        clearData()
+        showStatus('Ready for next employee', 'info')
+      }, 2500) // 2.5 seconds
+    }
+
     const storeAttendanceRecord = async (verificationResult) => {
       try {
         if (!employeeInfo.value) {
@@ -732,8 +757,13 @@ export default {
 
         if (response.success) {
           attendanceStored.value = true
-          showStatus(`${attendanceType.value} recorded successfully for ${employeeInfo.value.namakaryawan}!`, 'success')
+          const statusText = attendanceType.value === 'CHECK_IN' ? 'IN' : 'OUT'
+          const successMessage = `✅ Attendance ${statusText} recorded successfully for ${employeeInfo.value.namakaryawan}!`
+
           console.log('✅ Attendance record stored:', response.data)
+
+          // Show success notification and reset layout after 2-3 seconds
+          await showSuccessNotificationAndReset(successMessage)
         } else {
           showStatus('Failed to store attendance record', 'warning')
           console.error('❌ Store attendance failed:', response.message)
@@ -793,6 +823,8 @@ export default {
       startFingerprintScanning,
       resetScanning,
       storeAttendanceRecord,
+      stopFingerprintDevice,
+      showSuccessNotificationAndReset,
       initializeFingerprintService
     }
   }
