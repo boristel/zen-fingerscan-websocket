@@ -36,7 +36,7 @@ npm run serve
 # Build for production
 npm run build
 
-# Lint code
+# Lint code (Vue.js style linting)
 npm run lint
 ```
 
@@ -108,15 +108,15 @@ client/src/
    - Required files: `fingerprint.sdk.min.js`, `websdk.client.bundle.min.js`
 
 ### Development Process
-1. Start backend server on available port (auto-detects from 3000)
+1. Start backend server on available port (auto-detects from 3000, checks ports 3000-3010)
 2. Start Vue.js frontend (typically on 8080)
 3. Backend serves API at `http://localhost:PORT/api`
 4. Frontend development server handles routing and hot reload
 
 ### Production Build
 1. Run `npm run build` to build Vue.js frontend
-2. Start production server with `npm start`
-3. Static files are served from Express server
+2. Start production server with `node server.js`
+3. Static files are served from `client/dist/` via Express server
 
 ## Fingerprint Integration
 

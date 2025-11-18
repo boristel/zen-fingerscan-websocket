@@ -22,8 +22,10 @@
           <div class="card-body">
             <div class="input-group mb-3">
               <input
+                ref="searchInputRef"
                 v-model="searchTerm"
                 @keyup.enter="searchEmployees"
+                @focus="onSearchInputFocus"
                 type="text"
                 class="form-control"
                 placeholder="Enter Employee Name or ID..."
@@ -37,6 +39,14 @@
                 <span v-if="loading.search" class="loading-spinner"></span>
                 <i v-else class="bi bi-search"></i>
                 Search
+              </button>
+              <button
+                @click="toggleKeyboard"
+                class="btn btn-outline-secondary"
+                type="button"
+                title="Toggle On-Screen Keyboard"
+              >
+                <i class="bi bi-keyboard"></i>
               </button>
             </div>
 
@@ -342,6 +352,22 @@
       </div>
     </div>
 
+    <!-- On-Screen Keyboard -->
+    <OnScreenKeyboard
+      v-model="searchTerm"
+      :targetInput="searchInputRef"
+      :auto-show="false"
+      @enter-pressed="searchEmployees"
+    />
+
+    <!-- Employee Status Notification -->
+    <EmployeeStatusNotification
+      ref="notificationRef"
+      @proceed-anyway="proceedWithInactiveEmployee"
+      @select-another="resetSelection"
+      @close-notification="closeNotification"
+    />
+
     <!-- Status Messages -->
     <div v-if="statusMessage" class="row">
       <div class="col-md-8 mx-auto">
@@ -359,9 +385,15 @@ import { ref, reactive, computed, onMounted, onUnmounted } from 'vue'
 import apiService from '../services/api'
 import fingerprintService from '../services/fingerprintService'
 import mockFingerprintService from '../services/mockFingerprintService'
+import OnScreenKeyboard from '../components/OnScreenKeyboard.vue'
+import EmployeeStatusNotification from '../components/EmployeeStatusNotification.vue'
 
 export default {
   name: 'RegisterFingerprint',
+  components: {
+    OnScreenKeyboard,
+    EmployeeStatusNotification
+  },
   setup() {
     // Reactive state
     const searchTerm = ref('')
@@ -395,6 +427,12 @@ export default {
 
     // Status messages
     const statusMessage = ref(null)
+
+    // Keyboard and notification refs
+    const searchInputRef = ref(null)
+    const notificationRef = ref(null)
+    const keyboardRef = ref(null)
+    const proceedWithInactiveFlag = ref(false)
 
     // Finger names
     const fingerNames = [
@@ -450,12 +488,32 @@ export default {
     }
 
     const selectEmployee = async (employee) => {
+      // Check if employee is inactive and show notification
+      if (employee.active === 'N' && !proceedWithInactiveFlag.value) {
+        if (notificationRef.value) {
+          notificationRef.value.showNotification(employee, 'N')
+        }
+        return
+      }
+
+      // Proceed with employee selection
       selectedEmployee.value = employee
       searchResults.value = []
       searchTerm.value = ''
+      proceedWithInactiveFlag.value = false
 
       // Load registered fingerprints for this employee
       await loadEmployeeFingerprints(employee.idkaryawan)
+
+      // Show success notification for active employees
+      if (employee.active === 'Y' && notificationRef.value) {
+        notificationRef.value.showCustomNotification(
+          '✅ Employee Selected Successfully',
+          `${employee.namakaryawan} is now ready for fingerprint registration.`,
+          'success',
+          true
+        )
+      }
     }
 
     const loadEmployeeFingerprints = async (employeeId) => {
@@ -719,7 +777,19 @@ export default {
 
       try {
         await saveFingerprintToDatabase()
-        cancelRegistration()
+
+        // Show success notification
+        if (notificationRef.value && selectedEmployee.value) {
+          notificationRef.value.showCustomNotification(
+            '🎉 Fingerprint Registration Complete!',
+            `${getFingerName(selectedFingerIndex.value)} has been successfully registered for ${selectedEmployee.value.namakaryawan}.`,
+            'success',
+            true
+          )
+        }
+
+        // Reset everything to show only search container
+        resetToSearchOnly()
       } catch (error) {
         console.error('Finish registration error:', error)
         showStatus(error.message, 'danger')
@@ -781,6 +851,66 @@ export default {
       statusMessage.value = null
     }
 
+    // Keyboard and notification methods
+    const toggleKeyboard = () => {
+      if (keyboardRef.value) {
+        keyboardRef.value.toggleKeyboard()
+      }
+    }
+
+    const onSearchInputFocus = () => {
+      // Optionally show keyboard when input is focused on touch devices
+      if ('ontouchstart' in window && keyboardRef.value) {
+        keyboardRef.value.showKeyboard()
+      }
+    }
+
+    const proceedWithInactiveEmployee = (employee) => {
+      proceedWithInactiveFlag.value = true
+      if (employee) {
+        selectEmployee(employee)
+      }
+    }
+
+    const resetSelection = () => {
+      selectedEmployee.value = null
+      registeredFingerprints.value = []
+      proceedWithInactiveFlag.value = false
+      if (searchInputRef.value) {
+        searchInputRef.value.focus()
+      }
+    }
+
+    const closeNotification = () => {
+      // Notification component handles this automatically
+    }
+
+    const resetToSearchOnly = () => {
+      // Reset all state to show only search container
+      selectedEmployee.value = null
+      registeredFingerprints.value = []
+      searchResults.value = []
+      searchTerm.value = ''
+      searched.value = false
+      fingerprintRegistrationInProgress.value = false
+      registrationStep.value = 'selectFinger'
+      selectedFingerIndex.value = null
+      tempSelectedFingerIndex.value = null
+      acquisitionInProgress.value = false
+      currentScanCount.value = 0
+      capturedSamples.value = []
+      currentQuality.value = null
+      latestSample.value = null
+      proceedWithInactiveFlag.value = false
+
+      // Focus on search input for next operation
+      if (searchInputRef.value) {
+        searchInputRef.value.focus()
+      }
+
+      console.log('🔄 Reset to search-only mode')
+    }
+
     // Lifecycle hooks
     onMounted(async () => {
       // Test API connection on mount
@@ -835,6 +965,11 @@ export default {
       statusMessage,
       fingerNames,
 
+      // Keyboard and notification refs
+      searchInputRef,
+      notificationRef,
+      keyboardRef,
+
       // Computed
       isFingerRegistered,
 
@@ -854,7 +989,13 @@ export default {
       getFingerName,
       getQualityClass,
       formatDate,
-      clearStatusMessage
+      clearStatusMessage,
+      toggleKeyboard,
+      onSearchInputFocus,
+      proceedWithInactiveEmployee,
+      resetSelection,
+      closeNotification,
+      resetToSearchOnly
     }
   }
 }
@@ -1005,5 +1146,34 @@ export default {
 
 @keyframes spin {
   to { transform: rotate(360deg); }
+}
+
+/* Keyboard button styling */
+.input-group .btn-outline-secondary {
+  border-color: #6c757d;
+}
+
+.input-group .btn-outline-secondary:hover {
+  background-color: #6c757d;
+  border-color: #5a6268;
+  color: white;
+}
+
+/* Improved keyboard visibility */
+.on-screen-keyboard .keyboard-toggle-btn {
+  z-index: 1001;
+}
+
+/* Notification positioning adjustments */
+.employee-status-notification {
+  z-index: 9998;
+}
+
+/* Responsive improvements for mobile */
+@media (max-width: 576px) {
+  .input-group .btn-outline-secondary {
+    padding: 0.375rem 0.5rem;
+    font-size: 0.875rem;
+  }
 }
 </style>

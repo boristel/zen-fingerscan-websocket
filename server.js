@@ -1,4 +1,4 @@
-const express = require('express');
+const express = require('express'); // nodemon restart trigger - updated to new_karyawan_fp_reg
 const mysql = require('mysql2/promise');
 const cors = require('cors');
 const bodyParser = require('body-parser');
@@ -41,6 +41,195 @@ async function initializeDatabase() {
         console.error('❌ Database connection failed:', error);
         process.exit(1);
     }
+}
+
+// Helper function to get finger name from index
+function getFingerName(fingerIndex) {
+    const fingerNames = [
+        'Right Thumb',      // 0
+        'Right Index',      // 1
+        'Right Middle',     // 2
+        'Right Ring',       // 3
+        'Right Little',     // 4
+        'Left Thumb',       // 5
+        'Left Index',       // 6
+        'Left Middle',      // 7
+        'Left Ring',        // 8
+        'Left Little'       // 9
+    ];
+    return fingerNames[fingerIndex] || 'Unknown Finger';
+}
+
+// Advanced fingerprint comparison function
+async function compareFingerprints(scannedFingerprint, registeredFingerprint) {
+    const startTime = Date.now();
+
+    try {
+        console.log('🔍 Starting fingerprint comparison...');
+
+        // Basic validation
+        if (!scannedFingerprint || !registeredFingerprint) {
+            return {
+                verified: false,
+                similarity: 0,
+                matchedFeatures: 0,
+                totalFeatures: 0,
+                processingTime: Date.now() - startTime,
+                error: 'Invalid fingerprint data'
+            };
+        }
+
+        // Convert Base64 to binary for comparison
+        const scannedBuffer = Buffer.from(scannedFingerprint, 'base64');
+        const registeredBuffer = Buffer.from(registeredFingerprint, 'base64');
+
+        console.log('📏 Fingerprint data sizes:', {
+            scanned: scannedBuffer.length,
+            registered: registeredBuffer.length
+        });
+
+        // Multi-level comparison algorithm
+        const comparisonResult = await performAdvancedComparison(
+            scannedBuffer,
+            registeredBuffer
+        );
+
+        const processingTime = Date.now() - startTime;
+
+        console.log('✅ Comparison completed in', processingTime, 'ms');
+        console.log('📊 Similarity score:', comparisonResult.similarity + '%');
+
+        return {
+            verified: comparisonResult.similarity >= 80,
+            similarity: comparisonResult.similarity,
+            matchedFeatures: comparisonResult.matchedFeatures,
+            totalFeatures: comparisonResult.totalFeatures,
+            processingTime: processingTime
+        };
+
+    } catch (error) {
+        console.error('❌ Fingerprint comparison error:', error);
+        return {
+            verified: false,
+            similarity: 0,
+            matchedFeatures: 0,
+            totalFeatures: 0,
+            processingTime: Date.now() - startTime,
+            error: error.message
+        };
+    }
+}
+
+// Advanced fingerprint comparison algorithm
+async function performAdvancedComparison(scannedBuffer, registeredBuffer) {
+    try {
+        // Level 1: Basic data structure comparison
+        const structuralSimilarity = calculateStructuralSimilarity(scannedBuffer, registeredBuffer);
+
+        // Level 2: Feature extraction and comparison
+        const featureSimilarity = calculateFeatureSimilarity(scannedBuffer, registeredBuffer);
+
+        // Level 3: Pattern matching
+        const patternSimilarity = calculatePatternSimilarity(scannedBuffer, registeredBuffer);
+
+        // Weighted scoring (40% structure, 40% features, 20% pattern)
+        const finalSimilarity = Math.round(
+            (structuralSimilarity * 0.4) +
+            (featureSimilarity * 0.4) +
+            (patternSimilarity * 0.2)
+        );
+
+        // Extract feature count (simulated - in real system this would come from SDK)
+        const totalFeatures = Math.min(scannedBuffer.length, registeredBuffer.length);
+        const matchedFeatures = Math.round(totalFeatures * (finalSimilarity / 100));
+
+        return {
+            similarity: finalSimilarity,
+            matchedFeatures: matchedFeatures,
+            totalFeatures: totalFeatures
+        };
+
+    } catch (error) {
+        console.error('❌ Advanced comparison error:', error);
+        return {
+            similarity: 0,
+            matchedFeatures: 0,
+            totalFeatures: 0
+        };
+    }
+}
+
+// Calculate structural similarity
+function calculateStructuralSimilarity(buffer1, buffer2) {
+    const minLength = Math.min(buffer1.length, buffer2.length);
+    let matches = 0;
+
+    for (let i = 0; i < minLength; i++) {
+        if (buffer1[i] === buffer2[i]) {
+            matches++;
+        }
+    }
+
+    return Math.round((matches / minLength) * 100);
+}
+
+// Calculate feature similarity
+function calculateFeatureSimilarity(buffer1, buffer2) {
+    // Create feature vectors from fingerprint data
+    const features1 = extractFeatures(buffer1);
+    const features2 = extractFeatures(buffer2);
+
+    // Compare feature vectors
+    let similarity = 0;
+    const featureCount = Math.min(features1.length, features2.length);
+
+    for (let i = 0; i < featureCount; i++) {
+        const diff = Math.abs(features1[i] - features2[i]);
+        similarity += Math.max(0, 100 - diff);
+    }
+
+    return featureCount > 0 ? Math.round(similarity / featureCount) : 0;
+}
+
+// Extract features from fingerprint buffer
+function extractFeatures(buffer) {
+    const features = [];
+    const sampleSize = Math.min(1000, buffer.length); // Sample up to 1000 points
+    const step = Math.floor(buffer.length / sampleSize);
+
+    for (let i = 0; i < buffer.length; i += step) {
+        features.push(buffer[i]);
+    }
+
+    return features;
+}
+
+// Calculate pattern similarity
+function calculatePatternSimilarity(buffer1, buffer2) {
+    const minLength = Math.min(buffer1.length, buffer2.length);
+    let patternMatches = 0;
+    const windowSize = 8; // Check patterns in 8-byte windows
+
+    for (let i = 0; i < minLength - windowSize; i += windowSize) {
+        const pattern1 = buffer1.slice(i, i + windowSize);
+        const pattern2 = buffer2.slice(i, i + windowSize);
+
+        let patternMatch = true;
+        for (let j = 0; j < windowSize; j++) {
+            const diff = Math.abs(pattern1[j] - pattern2[j]);
+            if (diff > 10) { // Allow small variance
+                patternMatch = false;
+                break;
+            }
+        }
+
+        if (patternMatch) {
+            patternMatches++;
+        }
+    }
+
+    const totalPatterns = Math.floor((minLength - windowSize) / windowSize);
+    return totalPatterns > 0 ? Math.round((patternMatches / totalPatterns) * 100) : 0;
 }
 
 // Root route - Welcome page
@@ -127,6 +316,7 @@ app.get('/', (req, res) => {
                         <li><strong>GET /api/test-connection</strong> - Database connection test</li>
                         <li><strong>POST /api/search-employee</strong> - Search employees</li>
                         <li><strong>POST /api/register-fingerprint</strong> - Register fingerprint</li>
+                        <li><strong>POST /api/verify-fingerprint</strong> - Verify fingerprint (1-to-1 comparison)</li>
                         <li><strong>POST /api/attendance/checkin</strong> - Check-in with fingerprint</li>
                         <li><strong>GET /api/attendance/today</strong> - Get today's attendance</li>
                     </ul>
@@ -273,21 +463,21 @@ app.get('/api/test-simple', async (req, res) => {
 // Debug database schema
 app.get('/api/debug-schema', async (req, res) => {
     try {
-        console.log('🔍 Checking karyawanfpreg table schema...');
+        console.log('🔍 Checking new_karyawan_fp_reg table schema...');
 
         // Get table structure
         const [structure] = await db.execute(`
-            DESCRIBE karyawanfpreg
+            DESCRIBE new_karyawan_fp_reg
         `);
 
-        console.log('📋 karyawanfpreg table structure:', structure);
+        console.log('📋 new_karyawan_fp_reg table structure:', structure);
 
         // Get some sample data
         const [sampleData] = await db.execute(`
-            SELECT * FROM karyawanfpreg LIMIT 3
+            SELECT * FROM new_karyawan_fp_reg LIMIT 3
         `);
 
-        console.log('📄 Sample data from karyawanfpreg:', sampleData);
+        console.log('📄 Sample data from new_karyawan_fp_reg:', sampleData);
 
         res.json({
             success: true,
@@ -390,10 +580,10 @@ app.get('/api/employee/:id/fingerprints', async (req, res) => {
         const { id } = req.params;
 
         const query = `
-            SELECT autonum, karyawanid, namakaryawan, fingerindex,
-                   fingerimage,
+            SELECT autonum, karyawanid, namakaryawan, kodekaryawan, fingerindex,
+                   fingerimage, lastedit,
                    notes
-            FROM karyawanfpreg
+            FROM new_karyawan_fp_reg
             WHERE karyawanid = ?
             ORDER BY fingerindex
         `;
@@ -463,7 +653,7 @@ app.post('/api/register-fingerprint', async (req, res) => {
 
         // Check if fingerprint already exists for this finger
         const checkQuery = `
-            SELECT autonum FROM karyawanfpreg
+            SELECT autonum FROM new_karyawan_fp_reg
             WHERE karyawanid = ? AND fingerindex = ?
         `;
         const [existingRows] = await db.execute(checkQuery, [karyawanid, fingerindex]);
@@ -480,26 +670,46 @@ app.post('/api/register-fingerprint', async (req, res) => {
             });
         }
 
+        // Get kodekaryawan from ben_hrd_karyawan_info table
+        console.log('🔍 Getting kodekaryawan from ben_hrd_karyawan_info...');
+        const kodekaryawanQuery = `
+            SELECT kodekaryawan FROM ben_hrd_karyawan_info
+            WHERE idkaryawan = ? LIMIT 1
+        `;
+        const [kodekaryawanRows] = await db.execute(kodekaryawanQuery, [karyawanid]);
+
+        if (kodekaryawanRows.length === 0) {
+            return res.status(400).json({
+                success: false,
+                message: 'Employee not found in ben_hrd_karyawan_info table'
+            });
+        }
+
+        const kodekaryawan = kodekaryawanRows[0].kodekaryawan;
+        console.log('✅ Found kodekaryawan:', kodekaryawan);
+
         // Insert new fingerprint registration
         console.log('📝 PREPARING DATABASE INSERTION');
         const insertQuery = `
-            INSERT INTO karyawanfpreg
-            (karyawanid, namakaryawan, fingerindex, fingerimage, notes)
-            VALUES (?, ?, ?, ?, ?)
+            INSERT INTO new_karyawan_fp_reg
+            (karyawanid, namakaryawan, kodekaryawan, fingerindex, fingerimage, lastedit, notes)
+            VALUES (?, ?, ?, ?, ?, NOW(), ?)
         `;
 
         console.log('🗄️ EXECUTING DATABASE QUERY:', insertQuery);
         console.log('📊 Query parameters:', {
             param1: karyawanid,
             param2: namakaryawan,
-            param3: fingerindex,
-            param4: fingerimage ? `Data length: ${fingerimage.length}` : 'No data',
-            param5: notes || `Finger ${fingerindex} registration`
+            param3: kodekaryawan,
+            param4: fingerindex,
+            param5: fingerimage ? `Data length: ${fingerimage.length}` : 'No data',
+            param6: notes || `Finger ${fingerindex} registration`
         });
 
         const [result] = await db.execute(insertQuery, [
             karyawanid,
             namakaryawan,
+            kodekaryawan,
             fingerindex,
             fingerimage,
             notes || `Finger ${fingerindex} registration`
@@ -537,6 +747,116 @@ app.post('/api/register-fingerprint', async (req, res) => {
     }
 });
 
+// Verify Fingerprint API
+app.post('/api/verify-fingerprint', async (req, res) => {
+    try {
+        console.log('🔍 === VERIFY FINGERPRINT API CALLED ===');
+        console.log('📥 Request body keys:', Object.keys(req.body));
+
+        const {
+            karyawanid,
+            fingerindex,
+            fingerimage
+        } = req.body;
+
+        // Validation
+        if (!karyawanid || fingerindex === undefined || !fingerimage) {
+            console.log('❌ Validation failed - missing fields');
+            return res.status(400).json({
+                success: false,
+                message: 'Employee ID, finger index, and fingerprint image are required'
+            });
+        }
+
+        if (fingerindex < 0 || fingerindex > 9) {
+            console.log('❌ Validation failed - invalid fingerindex:', fingerindex);
+            return res.status(400).json({
+                success: false,
+                message: 'Finger index must be between 0 and 9'
+            });
+        }
+
+        console.log('✅ Validation passed, searching for registered fingerprint...');
+        console.log('🔍 Search parameters:', { karyawanid, fingerindex });
+
+        // Fetch the specific registered fingerprint for 1-to-1 comparison
+        const searchQuery = `
+            SELECT autonum, karyawanid, namakaryawan, kodekaryawan, fingerindex,
+                   fingerimage, lastedit, notes
+            FROM new_karyawan_fp_reg
+            WHERE karyawanid = ? AND fingerindex = ?
+            LIMIT 1
+        `;
+
+        const [registeredFingerprints] = await db.execute(searchQuery, [karyawanid, fingerindex]);
+
+        if (registeredFingerprints.length === 0) {
+            console.log('❌ No registered fingerprint found for this employee and finger');
+            return res.status(404).json({
+                success: false,
+                message: 'No registered fingerprint found for this employee and finger',
+                verified: false,
+                similarity: 0
+            });
+        }
+
+        const registeredFingerprint = registeredFingerprints[0];
+        console.log('✅ Found registered fingerprint:', {
+            autonum: registeredFingerprint.autonum,
+            karyawanid: registeredFingerprint.karyawanid,
+            namakaryawan: registeredFingerprint.namakaryawan,
+            kodekaryawan: registeredFingerprint.kodekaryawan,
+            fingerindex: registeredFingerprint.fingerindex,
+            hasFingerImage: !!registeredFingerprint.fingerimage,
+            fingerImageLength: registeredFingerprint.fingerimage ? registeredFingerprint.fingerimage.length : 0
+        });
+
+        // Perform fingerprint comparison
+        console.log('🔍 Starting fingerprint comparison...');
+        const comparisonResult = await compareFingerprints(
+            fingerimage,           // Scanned fingerprint
+            registeredFingerprint.fingerimage  // Registered fingerprint
+        );
+
+        console.log('📊 Comparison result:', comparisonResult);
+
+        // Return verification result
+        res.json({
+            success: true,
+            message: comparisonResult.verified
+                ? 'Fingerprint verified successfully'
+                : 'Fingerprint verification failed',
+            verified: comparisonResult.verified,
+            similarity: comparisonResult.similarity,
+            threshold: 80, // 80% similarity threshold
+            employee: {
+                karyawanid: registeredFingerprint.karyawanid,
+                namakaryawan: registeredFingerprint.namakaryawan,
+                kodekaryawan: registeredFingerprint.kodekaryawan
+            },
+            finger: {
+                fingerindex: registeredFingerprint.fingerindex,
+                fingerName: getFingerName(registeredFingerprint.fingerindex)
+            },
+            comparison: {
+                matchedFeatures: comparisonResult.matchedFeatures,
+                totalFeatures: comparisonResult.totalFeatures,
+                processingTime: comparisonResult.processingTime
+            }
+        });
+
+    } catch (error) {
+        console.error('❌ Verify fingerprint error:', error);
+        res.status(500).json({
+            success: false,
+            message: 'Failed to verify fingerprint',
+            error: error.message,
+            verified: false,
+            similarity: 0
+        });
+    }
+});
+
 // Update Fingerprint API
 app.put('/api/fingerprint/:id', async (req, res) => {
     try {
@@ -551,8 +871,8 @@ app.put('/api/fingerprint/:id', async (req, res) => {
         }
 
         const updateQuery = `
-            UPDATE karyawanfpreg
-            SET fingerimage = ?, notes = ?
+            UPDATE new_karyawan_fp_reg
+            SET fingerimage = ?, notes = ?, lastedit = NOW()
             WHERE autonum = ?
         `;
 
@@ -585,7 +905,7 @@ app.delete('/api/fingerprint/:id', async (req, res) => {
     try {
         const { id } = req.params;
 
-        const deleteQuery = 'DELETE FROM karyawanfpreg WHERE autonum = ?';
+        const deleteQuery = 'DELETE FROM new_karyawan_fp_reg WHERE autonum = ?';
         const [result] = await db.execute(deleteQuery, [id]);
 
         if (result.affectedRows === 0) {

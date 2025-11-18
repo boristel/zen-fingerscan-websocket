@@ -1,6 +1,6 @@
 import axios from 'axios'
 
-const API_BASE_URL = process.env.VUE_APP_API_URL || 'http://localhost:50003/api'
+const API_BASE_URL = process.env.VUE_APP_API_URL || 'http://localhost:3000/api'
 
 // Create axios instance with default configuration
 const apiClient = axios.create({
@@ -103,6 +103,35 @@ export const apiService = {
   // Update Fingerprint
   async updateFingerprint(fingerprintId, fingerprintData) {
     return await apiClient.put(`/fingerprint/${fingerprintId}`, fingerprintData)
+  },
+
+  // Verify Fingerprint
+  async verifyFingerprint(karyawanid, fingerindex, fingerimage) {
+    console.log('🔍 API SERVICE: verifyFingerprint called')
+    console.log('📤 API SERVICE: Sending data:', {
+      karyawanid: karyawanid,
+      fingerindex: fingerindex,
+      fingerimageExists: !!fingerimage,
+      fingerimageLength: fingerimage ? fingerimage.length : 0,
+      fingerimageType: typeof fingerimage
+    })
+
+    try {
+      console.log('🌐 API SERVICE: Making POST request to /verify-fingerprint')
+      const response = await apiClient.post('/verify-fingerprint', {
+        karyawanid: karyawanid,
+        fingerindex: fingerindex,
+        fingerimage: fingerimage
+      })
+      console.log('✅ API SERVICE: Verification request successful, response:', response)
+      return response
+    } catch (error) {
+      console.error('💥 API SERVICE: Verification request failed:', error)
+      console.error('💥 API SERVICE: Error response:', error.response?.data)
+      console.error('💥 API SERVICE: Error status:', error.response?.status)
+      console.error('💥 API SERVICE: Error message:', error.message)
+      throw error
+    }
   },
 
   // Delete Fingerprint

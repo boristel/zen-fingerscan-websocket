@@ -13,3 +13,44 @@ Always check facts directly with current and actual code implementations and wo
     - Logs detailed comparison results including similarity percentages
 
     formattedEmployeeId
+
+//--------------------------------------------
+change finger reg to new table
+To do : 
+
+* change the registration table from karyawanfpreg to new_karyawan_fp_reg with structure below 
+`new_karyawan_fp_reg` (
+  `autonum` bigint(1) NOT NULL AUTO_INCREMENT,
+  `kodekaryawan` varchar(30) NOT NULL DEFAULT '',
+  `karyawanid` varchar(5) DEFAULT NULL,
+  `namakaryawan` varchar(255) DEFAULT NULL,
+  `fingerindex` int(2) DEFAULT NULL,
+  `fingerimage` mediumtext DEFAULT NULL,
+  `lastedit` datetime NOT NULL DEFAULT '2025-01-01 01:01:01',
+  `notes` varchar(255) DEFAULT NULL,
+  PRIMARY KEY (`autonum`),
+  KEY `idkodekaryawan` (`kodekaryawan`),
+  KEY `idxkaryawanid` (`karyawanid`)
+)
+
+the difference only "new_karyawan_fp_reg.kodekaryawan" get data from "ben_hrd_karyawan_info.kodekaryawan"  and "new_karyawan_fp_reg.lastedit" set date time NOW
+
+No need to create table "new_karyawan_fp_reg", i'm already done created the table new_karyawan_fp_reg
+
+**REMEMBER BEHAVIOR BELOW WHILE WORK OR THINKING!** 
+1. Think carefully!. 
+2. Do or implement correctly, accurately, and precisely!. 
+3. Investigates with proper examinations!. 
+4. Analyse with proper evaluations and comparison accordingly!. 
+
+/------------------------------------
+let we finalize the layout and create notif for in-active employee
+
+* create 2 kind on screen keyboard
+  - numpad keyboard 
+  - normal keyboard 
+  so admin can used mouse or if the screen touchable  
+* add notification if "ben_hrd_karyawan_info.active" value "N"
+* after finish registration, close all display and left search container only
+
+ 
