@@ -414,6 +414,7 @@ export default {
     const capturedSamples = ref([])
     const currentQuality = ref(null)
     const latestSample = ref(null)
+    const compositeReferenceTemplate = ref(null)
 
     // Loading states
     const loading = reactive({
@@ -586,6 +587,33 @@ export default {
     }
 
     const handleSampleAcquired = (data) => {
+      console.log('🖐️ === DETAILED FINGERPRINT SAMPLE ANALYSIS (REGISTRATION) ===')
+      console.log('📥 Raw sample data:', data)
+      console.log('🔍 Sample object structure:', {
+        hasSample: !!data.sample,
+        sampleType: data.sample ? data.sample.type : 'N/A',
+        hasData: data.sample ? !!data.sample.data : false,
+        dataLength: data.sample ? (data.sample.data ? data.sample.data.length : 0) : 0,
+        dataType: data.sample && data.sample.data ? typeof data.sample.data : 'N/A',
+        scanCount: data.scanCount
+      });
+
+      if (data.sample && data.sample.data) {
+        console.log('📸 REGISTRATION FINGERPRINT DATA ANALYSIS:')
+        console.log('   - Data type:', typeof data.sample.data)
+        console.log('   - Data length:', data.sample.data.length)
+        console.log('   - First 100 chars:', data.sample.data.substring(0, 100))
+        console.log('   - Last 100 chars:', data.sample.data.substring(data.sample.data.length - 100))
+        console.log('   - Starts with data:image/', data.sample.data.startsWith('data:image/'))
+        console.log('   - Contains comma:', data.sample.data.includes(','))
+
+        // Check if it looks like base64
+        const base64Pattern = /^[A-Za-z0-9+/=*]*$/;
+        const cleanData = data.sample.data.includes(',') ? data.sample.data.split(',')[1] : data.sample.data;
+        console.log('   - Looks like base64:', base64Pattern.test(cleanData))
+        console.log('   - Clean data length:', cleanData ? cleanData.length : 0)
+      }
+
       latestSample.value = data.sample
       capturedSamples.value.push(data.sample)
       currentScanCount.value = data.scanCount
@@ -600,7 +628,56 @@ export default {
     const handleAllScansCompleted = (data) => {
       acquisitionInProgress.value = false
       registrationStep.value = 'complete'
-      showStatus('All scans completed successfully!', 'success')
+
+      console.log('🎯 === ALL SCANS COMPLETED - COMPOSITE TEMPLATE CREATION ===')
+      console.log('📊 Captured samples:', capturedSamples.value.length)
+
+      // Create a composite template from all samples
+      if (capturedSamples.value.length === 0) {
+        console.error('❌ No samples captured for template creation')
+        showStatus('No fingerprint samples captured', 'danger')
+        return
+      }
+
+      // For fingerprint verification, we need to create a reference template
+      // The most reliable approach is to use the first good scan as the reference template
+      let referenceTemplate = null
+
+      capturedSamples.value.forEach((sample, index) => {
+        console.log(`🔍 Sample ${index + 1}:`, {
+          format: sample.format,
+          type: sample.type,
+          hasData: !!sample.data,
+          dataLength: sample.data ? sample.data.length : 0,
+          quality: sample.quality || 'Unknown',
+          first50: sample.data ? sample.data.substring(0, 50) : 'NONE'
+        })
+
+        // Use the first valid sample as reference template
+        if (!referenceTemplate && sample.data && sample.data.length > 0) {
+          referenceTemplate = sample
+          console.log(`✅ Selected Sample ${index + 1} as reference template`)
+        }
+      })
+
+      if (referenceTemplate) {
+        console.log('🏆 Reference template selected:', {
+          format: referenceTemplate.format,
+          type: referenceTemplate.type,
+          dataLength: referenceTemplate.data.length,
+          first50: referenceTemplate.data.substring(0, 50)
+        })
+
+        // Store the reference template for later comparison
+        compositeReferenceTemplate.value = referenceTemplate.data
+        console.log('💾 Composite reference template stored for verification')
+      } else {
+        console.error('❌ No valid reference template found')
+        showStatus('Failed to create reference template', 'danger')
+        return
+      }
+
+      showStatus('All scans completed successfully! Template created.', 'success')
     }
 
     const handleFingerprintError = (error) => {
@@ -653,9 +730,10 @@ export default {
 
         const serviceToUse = usingMockService.value ? mockFingerprintService : fingerprintService
 
+        console.log('🔄 Starting registration with Intermediate format for template extraction...')
         await serviceToUse.startAcquisition(
           null, // Use default device
-          'PngImage', // Use PNG format for preview
+          'Intermediate', // Use Intermediate format for template verification
           maxScans.value
         )
 
@@ -693,21 +771,25 @@ export default {
 
       console.log('✅ Validation passed - we have fingerprint data')
 
-      // Use the best quality sample (last one usually has best quality)
-      const bestSample = capturedSamples.value[capturedSamples.value.length - 1]
-      console.log('🔍 Best sample selected:', {
-        format: bestSample.format,
-        timestamp: bestSample.timestamp,
-        dataLength: bestSample.data ? bestSample.data.length : 0,
-        dataType: typeof bestSample.data,
-        dataPreview: bestSample.data ? bestSample.data.substring(0, 100) + '...' : 'No data'
+      // Use the composite reference template created from all scans
+      const referenceTemplate = compositeReferenceTemplate.value
+      if (!referenceTemplate) {
+        console.error('❌ No reference template available')
+        showStatus('No fingerprint reference template available', 'danger')
+        return
+      }
+
+      console.log('🏆 Using composite reference template:', {
+        dataLength: referenceTemplate ? referenceTemplate.length : 0,
+        dataType: typeof referenceTemplate,
+        dataPreview: referenceTemplate ? referenceTemplate.substring(0, 100) + '...' : 'No data'
       })
 
       const fingerprintData = {
         karyawanid: selectedEmployee.value.idkaryawan,
         namakaryawan: selectedEmployee.value.namakaryawan,
         fingerindex: selectedFingerIndex.value,
-        fingerimage: bestSample.data,
+        fingerimage: referenceTemplate,
         notes: `${getFingerName(selectedFingerIndex.value)} - ${capturedSamples.value.length} scans`
       }
 

@@ -68,6 +68,11 @@ export const apiService = {
     return await apiClient.get(`/employee/${employeeId}`)
   },
 
+  // Get Employee by ID (alias for getEmployeeDetails)
+  async getEmployeeById(employeeId) {
+    return await this.getEmployeeDetails(employeeId)
+  },
+
   // Get Employee Fingerprints
   async getEmployeeFingerprints(employeeId) {
     return await apiClient.get(`/employee/${employeeId}/fingerprints`)
@@ -105,9 +110,36 @@ export const apiService = {
     return await apiClient.put(`/fingerprint/${fingerprintId}`, fingerprintData)
   },
 
-  // Verify Fingerprint
-  async verifyFingerprint(karyawanid, fingerindex, fingerimage) {
-    console.log('🔍 API SERVICE: verifyFingerprint called')
+  // Verify Fingerprint (for attendance - compare scanned fingerprint with registered template)
+  async verifyFingerprint(scannedFingerprint, registeredTemplate) {
+    console.log('🔍 API SERVICE: verifyFingerprint for attendance called')
+    console.log('📤 API SERVICE: Sending data:', {
+      scannedFingerprintExists: !!scannedFingerprint,
+      scannedFingerprintLength: scannedFingerprint ? scannedFingerprint.length : 0,
+      registeredTemplateExists: !!registeredTemplate,
+      registeredTemplateLength: registeredTemplate ? registeredTemplate.length : 0
+    })
+
+    try {
+      console.log('🌐 API SERVICE: Making POST request to /verify-fingerprint')
+      const response = await apiClient.post('/verify-fingerprint', {
+        scannedFingerprint: scannedFingerprint,
+        registeredTemplate: registeredTemplate
+      })
+      console.log('✅ API SERVICE: Verification request successful, response:', response)
+      return response
+    } catch (error) {
+      console.error('💥 API SERVICE: Verification request failed:', error)
+      console.error('💥 API SERVICE: Error response:', error.response?.data)
+      console.error('💥 API SERVICE: Error status:', error.response?.status)
+      console.error('💥 API SERVICE: Error message:', error.message)
+      throw error
+    }
+  },
+
+  // Legacy Verify Fingerprint (for registration)
+  async verifyFingerprintForRegistration(karyawanid, fingerindex, fingerimage) {
+    console.log('🔍 API SERVICE: verifyFingerprintForRegistration called')
     console.log('📤 API SERVICE: Sending data:', {
       karyawanid: karyawanid,
       fingerindex: fingerindex,
@@ -137,6 +169,73 @@ export const apiService = {
   // Delete Fingerprint
   async deleteFingerprint(fingerprintId) {
     return await apiClient.delete(`/fingerprint/${fingerprintId}`)
+  },
+
+  // Store Attendance Record
+  async storeAttendance(attendanceData) {
+    console.log('🔍 API SERVICE: storeAttendance called')
+    console.log('📤 API SERVICE: Sending attendance data:', {
+      karyawanid: attendanceData.karyawanid,
+      kodekaryawan: attendanceData.kodekaryawan,
+      namakaryawan: attendanceData.namakaryawan,
+      attendanceType: attendanceData.attendanceType,
+      fingerprintVerified: attendanceData.fingerprintVerified,
+      verificationSimilarity: attendanceData.verificationSimilarity,
+      verificationTime: attendanceData.verificationTime,
+      fingerindexMatched: attendanceData.fingerindexMatched
+    })
+
+    try {
+      console.log('🌐 API SERVICE: Making POST request to /store-attendance')
+      const response = await apiClient.post('/store-attendance', {
+        karyawanid: attendanceData.karyawanid,
+        kodekaryawan: attendanceData.kodekaryawan,
+        namakaryawan: attendanceData.namakaryawan,
+        attendanceType: attendanceData.attendanceType,
+        fingerprintVerified: attendanceData.fingerprintVerified,
+        verificationSimilarity: attendanceData.verificationSimilarity,
+        verificationTime: attendanceData.verificationTime,
+        fingerindexMatched: attendanceData.fingerindexMatched,
+        notes: attendanceData.notes
+      })
+      console.log('✅ API SERVICE: Attendance storage successful, response:', response)
+      return response
+    } catch (error) {
+      console.error('💥 API SERVICE: Attendance storage failed:', error)
+      console.error('💥 API SERVICE: Error response:', error.response?.data)
+      console.error('💥 API SERVICE: Error status:', error.response?.status)
+      console.error('💥 API SERVICE: Error message:', error.message)
+      throw error
+    }
+  },
+
+  // Direct API call for registration-style verification
+  async verifyFingerprintRegistrationStyle(karyawanid, fingerindex, fingerimage) {
+    console.log('🔍 API SERVICE: verifyFingerprintRegistrationStyle called')
+    console.log('📤 API SERVICE: Sending data:', {
+      karyawanid: karyawanid,
+      fingerindex: fingerindex,
+      fingerimageExists: !!fingerimage,
+      fingerimageLength: fingerimage ? fingerimage.length : 0,
+      fingerimageType: typeof fingerimage
+    })
+
+    try {
+      console.log('🌐 API SERVICE: Making POST request to /verify-fingerprint (registration style)')
+      const response = await apiClient.post('/verify-fingerprint', {
+        karyawanid: karyawanid,
+        fingerindex: fingerindex,
+        fingerimage: fingerimage
+      })
+      console.log('✅ API SERVICE: Verification request successful, response:', response)
+      return response
+    } catch (error) {
+      console.error('💥 API SERVICE: Verification request failed:', error)
+      console.error('💥 API SERVICE: Error response:', error.response?.data)
+      console.error('💥 API SERVICE: Error status:', error.response?.status)
+      console.error('💥 API SERVICE: Error message:', error.message)
+      throw error
+    }
   }
 }
 
