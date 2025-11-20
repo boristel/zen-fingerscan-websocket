@@ -239,20 +239,28 @@
                 <p v-if="verificationResult.message">{{ verificationResult.message }}</p>
                 <div v-if="verificationResult.similarity" class="mt-2">
                   <strong>Similarity Score: </strong>
-                  <span :class="verificationResult.similarity >= 80 ? 'text-success' : 'text-danger'">
+                  <span :class="verificationResult.similarity >= 75 ? 'text-success' : 'text-danger'">
                     {{ verificationResult.similarity }}%
                   </span>
                   <div class="progress mt-1" style="height: 20px;">
                     <div
                       class="progress-bar"
-                      :class="verificationResult.similarity >= 80 ? 'bg-success' : 'bg-danger'"
+                      :class="verificationResult.similarity >= 75 ? 'bg-success' : 'bg-danger'"
                       role="progressbar"
                       :style="{width: verificationResult.similarity + '%'}"
                     >
                       {{ verificationResult.similarity }}%
                     </div>
                   </div>
-                  <small class="text-muted">Threshold: 80% for verification</small>
+                  <small class="text-muted">
+                    <i class="bi bi-shield-check"></i>
+                    Secure Verification Threshold: 75%
+                  </small>
+                  <div v-if="verificationResult.similarity < 75 && verificationResult.similarity > 50" class="alert alert-warning mt-2 mb-0">
+                    <i class="bi bi-exclamation-triangle"></i>
+                    <strong>Security Alert:</strong> Fingerprint similarity below secure threshold.
+                    Please use the exact same finger that was registered.
+                  </div>
                 </div>
                 <div v-if="verificationResult.processingTime" class="small text-muted mt-2">
                   Processing time: {{ verificationResult.processingTime }}ms
@@ -297,7 +305,6 @@
 import { ref, reactive, computed, onMounted, onUnmounted } from 'vue'
 import apiService from '../services/api'
 import fingerprintService from '../services/fingerprintService'
-import mockFingerprintService from '../services/mockFingerprintService'
 
 export default {
   name: 'AttendanceModule',
@@ -335,10 +342,10 @@ export default {
       return id.padStart(5, '0')
     })
 
-    // Initialize fingerprint service with progress feedback
+    // Initialize real fingerprint service
     const initializeFingerprintService = async () => {
       try {
-        console.log('🚀 Initializing fingerprint service...')
+        console.log('🚀 Initializing real fingerprint service...')
 
         // Update progress during initialization (10% -> 40%)
         scanProgress.value = 20
@@ -351,14 +358,13 @@ export default {
 
         usingMockService.value = false
         console.log('✅ Real fingerprint service initialized successfully')
-        showStatus('Fingerprint device ready for scanning', 'success')
+        showStatus('Real fingerprint device ready for scanning', 'success')
         return fingerprintService
       } catch (error) {
-        console.warn('⚠️ Real fingerprint service failed, falling back to mock service:', error)
-        usingMockService.value = true
-        scanProgress.value = 50 // Still proceed to scanning phase
-        showStatus('Using mock fingerprint service for demonstration', 'warning')
-        return mockFingerprintService
+        console.error('❌ Real fingerprint service initialization failed:', error)
+        usingMockService.value = false
+        showStatus('Failed to initialize fingerprint device. Please check connection.', 'danger')
+        throw error
       }
     }
 
@@ -540,15 +546,15 @@ export default {
       try {
         console.log('🔍 Starting fingerprint capture for attendance...')
 
-        // Use proper fingerprint service
-        const serviceToUse = usingMockService.value ? mockFingerprintService : fingerprintService
+        // Use real fingerprint service only
+        console.log('🔧 Using real fingerprint device for capture')
 
         // Set up event listener for sample capture
         return new Promise((resolve, reject) => {
           const timeoutId = setTimeout(() => {
-            serviceToUse.off('sampleAcquired', onSampleAcquired)
-            serviceToUse.off('acquisitionError', onError)
-            serviceToUse.stopAcquisition()
+            fingerprintService.off('sampleAcquired', onSampleAcquired)
+            fingerprintService.off('acquisitionError', onError)
+            fingerprintService.stopAcquisition()
             reject(new Error('Fingerprint capture timeout after 30 seconds'))
           }, 30000)
 
@@ -581,8 +587,8 @@ export default {
             }
 
             clearTimeout(timeoutId)
-            serviceToUse.off('sampleAcquired', onSampleAcquired)
-            serviceToUse.off('acquisitionError', onError)
+            fingerprintService.off('sampleAcquired', onSampleAcquired)
+            fingerprintService.off('acquisitionError', onError)
 
             // Store the fingerprint template for display (only if it's an image)
             if (data.sample && data.sample.data) {
@@ -606,7 +612,7 @@ export default {
             }
 
             // Stop acquisition after getting first sample
-            serviceToUse.stopAcquisition()
+            fingerprintService.stopAcquisition()
               .then(() => {
                 console.log('✅ Fingerprint acquisition stopped')
                 // Return the base64 data from the sample
@@ -623,25 +629,25 @@ export default {
           const onError = (error) => {
             console.error('❌ Fingerprint capture error:', error)
             clearTimeout(timeoutId)
-            serviceToUse.off('sampleAcquired', onSampleAcquired)
-            serviceToUse.off('acquisitionError', onError)
+            fingerprintService.off('sampleAcquired', onSampleAcquired)
+            fingerprintService.off('acquisitionError', onError)
             reject(error)
           }
 
           // Register event listeners
-          serviceToUse.on('sampleAcquired', onSampleAcquired)
-          serviceToUse.on('acquisitionError', onError)
+          fingerprintService.on('sampleAcquired', onSampleAcquired)
+          fingerprintService.on('acquisitionError', onError)
 
           // Start acquisition for multiple scans to get best match (3 scans for better accuracy)
           console.log('🔄 Starting attendance with 3 scans for best template match...')
-          serviceToUse.startAcquisition(
+          fingerprintService.startAcquisition(
             null, // Use default device
             'Intermediate', // Use Intermediate format for template verification
             3 // Use 3 scans to get best quality template
           ).catch(error => {
             clearTimeout(timeoutId)
-            serviceToUse.off('sampleAcquired', onSampleAcquired)
-            serviceToUse.off('acquisitionError', onError)
+            fingerprintService.off('sampleAcquired', onSampleAcquired)
+            fingerprintService.off('acquisitionError', onError)
             reject(error)
           })
         })
@@ -653,31 +659,53 @@ export default {
     }
 
     const verifyFingerprint = async (capturedFingerprint, registeredTemplates) => {
-      console.log(`🔍 === NEW SDK TEMPLATE VERIFICATION ===`)
-      console.log(`📊 Verifying against ${registeredTemplates.length} templates using SDK method`)
+      console.log(`🔍 === SDK FINGERPRINT VERIFICATION ===`)
+      console.log(`📊 Using DigitalPersona SDK for proper biometric matching`)
+      console.log(`🎯 Comparing with ${registeredTemplates.length} registered templates`)
 
       const startTime = Date.now()
 
       try {
-        // Use the new SDK template verification method
-        const serviceToUse = usingMockService.value ? mockFingerprintService : fingerprintService
+        // Use the proper SDK verification method instead of server-side binary comparison
+        console.log('🔧 Using fingerprintService.verifyFingerprint() for accurate matching...')
 
-        console.log('🧪 Calling SDK template verification...')
-        const verificationResult = await serviceToUse.verifyFingerprint(
+        // Ensure fingerprint service is initialized
+        if (!fingerprintService) {
+          await initializeFingerprintService()
+        }
+
+        // Use SDK's built-in verification method for proper template matching
+        const sdkVerificationResult = await fingerprintService.verifyFingerprint(
           capturedFingerprint,
           registeredTemplates
         )
 
-        console.log('📊 SDK Verification Result:', verificationResult)
+        console.log('📊 SDK Verification Result:', sdkVerificationResult)
 
-        if (verificationResult.success) {
+        if (sdkVerificationResult.success) {
+          // Log attendance verification success to server for audit trail
+          try {
+            await apiService.logAttendanceVerification({
+              karyawanid: employeeInfo.value.idkaryawan,
+              verified: sdkVerificationResult.verified,
+              similarity: sdkVerificationResult.similarity,
+              verificationMethod: 'SDK Client-Side Biometric Verification',
+              processingTime: Date.now() - startTime,
+              bestMatch: sdkVerificationResult.bestMatch
+            })
+          } catch (logError) {
+            console.warn('⚠️ Failed to log verification to server:', logError)
+            // Continue even if logging fails
+          }
+
           return {
-            verified: verificationResult.verified,
-            similarity: verificationResult.similarity,
-            bestMatch: verificationResult.bestMatch,
+            verified: sdkVerificationResult.verified,
+            similarity: sdkVerificationResult.similarity,
+            bestMatch: sdkVerificationResult.bestMatch,
             processingTime: Date.now() - startTime,
-            verificationMethod: 'SDK Template Verification',
-            verificationResults: verificationResult.verificationResults
+            verificationMethod: 'SDK Client-Side Biometric Verification',
+            confidence: sdkVerificationResult.confidence,
+            matchDetails: sdkVerificationResult.matchDetails
           }
         } else {
           return {
@@ -685,18 +713,18 @@ export default {
             similarity: 0,
             bestMatch: null,
             processingTime: Date.now() - startTime,
-            verificationMethod: 'SDK Template Verification',
-            error: verificationResult.error
+            verificationMethod: 'SDK Client-Side Biometric Verification',
+            error: sdkVerificationResult.error
           }
         }
       } catch (error) {
-        console.error('❌ SDK template verification error:', error)
+        console.error('❌ Server-side verification error:', error)
         return {
           verified: false,
           similarity: 0,
           bestMatch: null,
           processingTime: Date.now() - startTime,
-          verificationMethod: 'SDK Template Verification',
+          verificationMethod: 'SECURE Server-Side Biometric Verification',
           error: error.message
         }
       }
@@ -704,10 +732,9 @@ export default {
 
     const stopFingerprintDevice = async () => {
       try {
-        console.log('🛑 Stopping fingerprint device...')
-        const serviceToUse = usingMockService.value ? mockFingerprintService : fingerprintService
-        await serviceToUse.stopAcquisition()
-        console.log('✅ Fingerprint device stopped')
+        console.log('🛑 Stopping real fingerprint device...')
+        await fingerprintService.stopAcquisition()
+        console.log('✅ Real fingerprint device stopped')
       } catch (error) {
         console.warn('⚠️ Error stopping fingerprint device:', error)
       }

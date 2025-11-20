@@ -449,134 +449,119 @@ class FingerprintService {
     })
   }
 
-  // Verify fingerprint using proper feature-based matching
+  // Verify fingerprint using comprehensive logging and debugging
+  // BALANCED VERIFICATION: Accept registered fingers, reject unregistered fingers with high accuracy
   async verifyFingerprint(scannedTemplate, registeredTemplates) {
     try {
-      console.log('🔍 === PROPER FINGERPRINT VERIFICATION ===')
-      console.log('📥 Scanned template:', {
-        length: scannedTemplate ? scannedTemplate.length : 0,
-        type: typeof scannedTemplate,
-        first50: scannedTemplate ? scannedTemplate.substring(0, 50) : 'NONE'
+      console.log('🔍 === BALANCED FINGERPRINT VERIFICATION ===')
+      console.log('📊 Verification parameters:', {
+        scannedTemplateLength: scannedTemplate ? scannedTemplate.length : 0,
+        registeredTemplatesCount: registeredTemplates ? registeredTemplates.length : 0
       })
-
-      console.log('📊 Registered templates:', registeredTemplates.map((template, index) => ({
-        index: index,
-        length: template.fingerimage ? template.fingerimage.length : 0,
-        fingerindex: template.fingerindex,
-        hasData: !!template.fingerimage,
-        first50: template.fingerimage ? template.fingerimage.substring(0, 50) : 'NONE'
-      })))
 
       if (!scannedTemplate || !registeredTemplates || registeredTemplates.length === 0) {
-        throw new Error('Missing fingerprint templates for verification')
+        return {
+          success: false,
+          verified: false,
+          similarity: 0,
+          bestMatch: null,
+          error: 'Missing fingerprint templates for verification'
+        }
       }
-
-      // Extract fingerprint features from the scanned template
-      const scannedFeatures = this.extractFingerprintFeatures(scannedTemplate)
-
-      if (!scannedFeatures || scannedFeatures.length === 0) {
-        throw new Error('Failed to extract features from scanned fingerprint')
-      }
-
-      console.log('🧬 Extracted features from scanned fingerprint:', {
-        featureCount: scannedFeatures.length,
-        qualityScore: scannedFeatures.qualityScore || 'N/A'
-      })
 
       let bestMatch = null
       let bestScore = 0
       let verificationResults = []
 
-      // Compare scanned features with each registered template
-      for (let i = 0; i < registeredTemplates.length; i++) {
-        const registeredTemplate = registeredTemplates[i]
+      console.log(`🔄 Comparing scanned template against ${registeredTemplates.length} registered templates...`)
 
-        if (!registeredTemplate.fingerimage) {
+      // Compare scanned template with each registered template
+      for (let i = 0; i < registeredTemplates.length; i++) {
+        const template = registeredTemplates[i]
+
+        if (!template.fingerimage) {
           console.log(`⚠️ Skipping template ${i} - no fingerprint data`)
           continue
         }
 
-        console.log(`🔍 Comparing with registered template ${i} (fingerindex: ${registeredTemplate.fingerindex})...`)
+        console.log(`🔍 Comparing with template ${i} (fingerindex: ${template.fingerindex})...`)
 
-        try {
-          // Extract features from registered template
-          const registeredFeatures = this.extractFingerprintFeatures(registeredTemplate.fingerimage)
+        // Extract and compare fingerprint features
+        const scannedFeatures = this.extractFingerprintFeatures(scannedTemplate)
+        const registeredFeatures = this.extractFingerprintFeatures(template.fingerimage)
 
-          if (!registeredFeatures || registeredFeatures.length === 0) {
-            console.log(`⚠️ Could not extract features from registered template ${i}`)
-            continue
-          }
+        if (!scannedFeatures || !registeredFeatures) {
+          console.log(`❌ Feature extraction failed for template ${i}`)
+          continue
+        }
 
-          console.log(`🧬 Extracted features from registered template ${i}:`, {
-            featureCount: registeredFeatures.length,
-            qualityScore: registeredFeatures.qualityScore || 'N/A'
-          })
+        // Perform sophisticated feature matching
+        const matchResult = await this.matchFingerprintFeatures(scannedFeatures, registeredFeatures)
 
-          // Perform proper fingerprint feature matching
-          const matchResult = await this.matchFingerprintFeatures(scannedFeatures, registeredFeatures)
+        const result = {
+          fingerindex: template.fingerindex,
+          similarity: typeof matchResult.similarity === 'string' ?
+                     parseInt(matchResult.similarity.replace('%', '')) :
+                     matchResult.similarity,
+          verified: matchResult.verified,
+          confidence: matchResult.confidence,
+          matchDetails: matchResult.details,
+          namakaryawan: template.namakaryawan,
+          karyawanid: template.karyawanid
+        }
 
-          const result = {
-            fingerindex: registeredTemplate.fingerindex,
-            similarity: matchResult.similarity,
-            verified: matchResult.verified,
-            confidence: matchResult.confidence,
-            matchDetails: matchResult.details,
-            namakaryawan: registeredTemplate.namakaryawan,
-            karyawanid: registeredTemplate.karyawanid
-          }
+        verificationResults.push(result)
 
-          verificationResults.push(result)
+        console.log(`📊 Template ${i} result:`, {
+          similarity: result.similarity + '%',
+          verified: result.verified,
+          confidence: result.confidence,
+          fingerindex: template.fingerindex
+        })
 
-          console.log(`📊 Template ${i} result:`, {
-            fingerindex: result.fingerindex,
-            similarity: result.similarity + '%',
-            verified: result.verified,
-            confidence: result.confidence
-          })
-
-          if (matchResult.similarity > bestScore) {
-            bestScore = matchResult.similarity
-            bestMatch = result
-          }
-
-        } catch (error) {
-          console.error(`❌ Error processing template ${i}:`, error)
-          verificationResults.push({
-            fingerindex: registeredTemplate.fingerindex,
-            similarity: 0,
-            verified: false,
-            confidence: 0,
-            error: error.message
-          })
+        // Track best match
+        if (matchResult.similarity > bestScore) {
+          bestScore = matchResult.similarity
+          bestMatch = result
         }
       }
 
+      // FINAL VERIFICATION DECISION: Optimal security threshold
+      const finalVerified = bestMatch && bestMatch.verified && bestScore >= 80
+      const finalSimilarity = finalVerified ? bestScore : 0
+
       const finalResult = {
         success: true,
-        verified: bestMatch ? bestMatch.verified : false,
+        verified: finalVerified,
         bestMatch: bestMatch,
-        similarity: bestScore,
+        similarity: finalSimilarity,
         verificationResults: verificationResults,
-        processingTime: Date.now()
+        processingTime: Date.now(),
+        threshold: 80,
+        algorithm: 'SECURE_DISCRIMINATIVE_MATCHING'
       }
 
-      console.log('✅ FINGERPRINT VERIFICATION COMPLETED:', {
+      console.log('🎯 FINAL VERIFICATION RESULT:', {
         verified: finalResult.verified,
-        bestMatch: finalResult.bestMatch,
         similarity: finalResult.similarity + '%',
-        confidence: finalResult.bestMatch?.confidence || 'N/A',
-        totalTemplatesCompared: registeredTemplates.length
+        bestMatchFinger: finalResult.bestMatch?.fingerindex || 'none',
+        bestMatchName: finalResult.bestMatch?.namakaryawan || 'none',
+        totalTemplatesCompared: registeredTemplates.length,
+        securityThreshold: '80%',
+        status: finalResult.verified ? '✅ AUTHORIZED' : '❌ REJECTED'
       })
 
       return finalResult
 
     } catch (error) {
-      console.error('❌ Fingerprint verification failed:', error)
+      console.error('❌ Verification error:', error)
       return {
         success: false,
         verified: false,
-        error: error.message,
-        similarity: 0
+        similarity: 0,
+        bestMatch: null,
+        processingTime: Date.now(),
+        error: `Verification failed: ${error.message}`
       }
     }
   }
@@ -1147,19 +1132,19 @@ class FingerprintService {
       // Quality-based weighting
       const qualityWeight = (features1.qualityScore + features2.qualityScore) / 200 // Average quality, normalized to 0-1
 
-      // Calculate weighted similarity score
+      // 🔒 SECURE DISCRIMINATION: Strict biometric verification to prevent false positives
       const overallSimilarity = Math.round(
-        (vectorSimilarity * 0.4) +      // 40% feature vector similarity
-        (minutiaeSimilarity * 0.3) +    // 30% minutiae matching
-        (ridgeSimilarity * 0.2) +       // 20% ridge pattern matching
-        (textureSimilarity * 0.1)       // 10% texture matching
+        (vectorSimilarity * 0.25) +      // 25% feature vector similarity
+        (minutiaeSimilarity * 0.45) +    // 45% minutiae matching (most discriminative)
+        (ridgeSimilarity * 0.2) +        // 20% ridge pattern matching
+        (textureSimilarity * 0.1)        // 10% texture matching
       )
 
-      // Adjust by quality
-      const finalSimilarity = Math.round(overallSimilarity * (0.5 + qualityWeight * 0.5))
+      // 🔒 STRICT SECURITY: No quality bonuses for unverified fingers
+      const finalSimilarity = Math.round(overallSimilarity)
 
-      // Determine verification result
-      const verified = finalSimilarity >= 60 // 60% threshold for fingerprint matching (optimized for feature-based verification)
+      // ⚖️ OPTIMAL SECURITY: Balanced threshold that accepts same-finger matches while rejecting different fingers
+      const verified = finalSimilarity >= 80 // 80% threshold - optimal for biometric discrimination
       const confidence = this.calculateConfidence(finalSimilarity, features1.qualityScore, features2.qualityScore)
 
       const result = {
@@ -1285,6 +1270,120 @@ class FingerprintService {
 
     const confidence = Math.round((qualityFactor * 0.4 + similarityFactor * 0.6) * 100)
     return Math.min(100, Math.max(0, confidence))
+  }
+
+  // CROSS-FINGER SECURITY: Enhanced security checks for similarity warning zone
+  performCrossFingerSecurityCheck(scannedFeatures, registeredFeatures, similarity) {
+    console.log('🔒 === CROSS-FINGER SECURITY CHECK ===')
+    console.log(`📊 Similarity: ${similarity}% (in warning zone 75-85%)`)
+
+    // SECURITY CHECK 1: Feature Divergence Analysis
+    const featureDivergence = this.calculateFeatureDivergence(scannedFeatures, registeredFeatures)
+    console.log(`🔍 Feature Divergence: ${featureDivergence}%`)
+
+    // SECURITY CHECK 2: Pattern Consistency Check
+    const patternConsistency = this.checkPatternConsistency(scannedFeatures, registeredFeatures)
+    console.log(`🔍 Pattern Consistency: ${patternConsistency}%`)
+
+    // SECURITY CHECK 3: Ridge Flow Direction Analysis
+    const ridgeFlowMatch = this.analyzeRidgeFlowDirection(scannedFeatures, registeredFeatures)
+    console.log(`🔍 Ridge Flow Match: ${ridgeFlowMatch}%`)
+
+    // COMBINED SECURITY SCORE
+    const securityScore = (featureDivergence + patternConsistency + ridgeFlowMatch) / 3
+    console.log(`🔒 Combined Security Score: ${securityScore}%`)
+
+    // BALANCED SECURITY DECISION - Adjusted for real fingerprint variability
+    const passesSecurity = securityScore >= 60 // Require 60% security score (more realistic)
+
+    if (passesSecurity) {
+      return {
+        passes: true,
+        reason: `High security score (${securityScore.toFixed(1)}%) - Likely exact finger match`,
+        securityScore: securityScore
+      }
+    } else {
+      return {
+        passes: false,
+        reason: `Low security score (${securityScore.toFixed(1)}%) - Possible different finger`,
+        securityScore: securityScore
+      }
+    }
+  }
+
+  // Calculate feature divergence between fingerprint templates
+  calculateFeatureDivergence(features1, features2) {
+    if (!features1.featureVector || !features2.featureVector) {
+      return 0
+    }
+
+    const vector1 = features1.featureVector
+    const vector2 = features2.featureVector
+    const minLength = Math.min(vector1.length, vector2.length)
+
+    let divergence = 0
+    for (let i = 0; i < minLength; i++) {
+      const diff = Math.abs(vector1[i] - vector2[i])
+      divergence += diff
+    }
+
+    const maxPossibleDivergence = minLength * 2 // Maximum possible difference
+    const divergenceScore = 100 - (divergence / maxPossibleDivergence * 100)
+
+    return Math.min(100, Math.max(0, divergenceScore))
+  }
+
+  // Check pattern consistency between templates
+  checkPatternConsistency(features1, features2) {
+    if (!features1.ridgePatterns || !features2.ridgePatterns) {
+      return 0
+    }
+
+    const patterns1 = features1.ridgePatterns
+    const patterns2 = features2.ridgePatterns
+    const minLength = Math.min(patterns1.length, patterns2.length)
+
+    if (minLength === 0) return 0
+
+    let consistencyScore = 0
+    for (let i = 0; i < minLength; i++) {
+      const p1 = patterns1[i]
+      const p2 = patterns2[i]
+
+      const strengthDiff = Math.abs(p1.strength - p2.strength)
+      const frequencyDiff = Math.abs(p1.frequency - p2.frequency)
+      const typeMatch = p1.type === p2.type ? 1 : 0
+
+      const patternScore = (1 - strengthDiff / 20) * 0.4 + (1 - frequencyDiff) * 0.3 + typeMatch * 0.3
+      consistencyScore += patternScore
+    }
+
+    return (consistencyScore / minLength) * 100
+  }
+
+  // Analyze ridge flow direction (simplified for feature templates)
+  analyzeRidgeFlowDirection(features1, features2) {
+    if (!features1.textureFeatures || !features2.textureFeatures) {
+      return 0
+    }
+
+    const texture1 = features1.textureFeatures
+    const texture2 = features2.textureFeatures
+    const minLength = Math.min(texture1.length, texture2.length)
+
+    if (minLength === 0) return 0
+
+    let flowScore = 0
+    for (let i = 0; i < minLength - 1; i++) {
+      const gradient1 = texture1[i].gradient
+      const gradient2 = texture2[i].gradient
+
+      const gradientDiff = Math.abs(gradient1 - gradient2)
+      const score = Math.max(0, 1 - gradientDiff / 100)
+      flowScore += score
+    }
+
+    return (flowScore / (minLength - 1)) * 100
   }
 
   // Cleanup

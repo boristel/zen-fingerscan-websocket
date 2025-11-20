@@ -267,6 +267,127 @@ class MockFingerprintService {
     }
   }
 
+  // STRICT MOCK VERIFICATION: Proper fingerprint verification with high security
+  async verifyFingerprint(scannedFingerprint, registeredTemplates) {
+    try {
+      console.log('🧪 === MOCK FINGERPRINT VERIFICATION (STRICT MODE) ===')
+      console.log('📊 Verification parameters:', {
+        scannedFingerprintLength: scannedFingerprint ? scannedFingerprint.length : 0,
+        registeredTemplatesCount: registeredTemplates ? registeredTemplates.length : 0
+      })
+
+      if (!scannedFingerprint || !registeredTemplates || registeredTemplates.length === 0) {
+        return {
+          success: false,
+          verified: false,
+          similarity: 0,
+          error: 'Missing fingerprint data for verification'
+        }
+      }
+
+      let bestMatch = null
+      let bestScore = 0
+      let verificationResults = []
+
+      // Simulate secure verification for each registered template
+      for (let i = 0; i < registeredTemplates.length; i++) {
+        const template = registeredTemplates[i]
+
+        if (!template.fingerimage) {
+          console.log(`⚠️ Skipping template ${i} - no fingerprint data`)
+          continue
+        }
+
+        console.log(`🔍 Mock verification for fingerindex ${template.fingerindex}...`)
+
+        // STRICT MOCK VERIFICATION: Only exact finger match passes
+        // This simulates how real biometric verification should work
+        console.log('🔒 STRICT MOCK: Simulating secure biometric verification...')
+
+        // For secure testing, we need to simulate exact finger matching
+        // In real deployment, this would compare actual biometric features
+        let similarity
+
+        // To simulate secure verification properly:
+        // - Only the FIRST registered fingerprint will match (simulating correct finger)
+        // - All other registered fingerprints will get lower scores (simulating wrong fingers)
+        const isFirstTemplate = i === 0 // Assume first template is the "correct" finger
+
+        if (isFirstTemplate) {
+          // Exact same finger: High similarity (80-94%)
+          similarity = 80 + Math.floor(Math.random() * 15) // 80-94%
+          console.log(`✅ MOCK: Exact finger match for template ${i} (simulating correct finger)`)
+        } else {
+          // Different finger: Always below threshold (45-72% max)
+          similarity = 45 + Math.floor(Math.random() * 27) // 45-71%
+          console.log(`❌ MOCK: Wrong finger for template ${i} (simulating different finger)`)
+        }
+
+        const result = {
+          fingerindex: template.fingerindex,
+          similarity: similarity,
+          verified: similarity >= 75, // BALANCED: 75%+ qualifies as verified
+          confidence: similarity >= 75 ? similarity : 0,
+          matchDetails: {
+            mockVerification: true,
+            securityLevel: 'HIGH',
+            threshold: 75
+          },
+          namakaryawan: template.namakaryawan,
+          karyawanid: template.karyawanid
+        }
+
+        verificationResults.push(result)
+
+        console.log(`📊 Mock verification result for finger ${template.fingerindex}:`, {
+          similarity: similarity + '%',
+          verified: result.verified,
+          securityThreshold: '75%'
+        })
+
+        if (similarity > bestScore) {
+          bestScore = similarity
+          bestMatch = result
+        }
+      }
+
+      // STRICT SECURITY: Only verify if best match meets high threshold
+      const finalVerified = bestMatch && bestMatch.verified
+      const finalSimilarity = finalVerified ? bestScore : 0
+
+      const finalResult = {
+        success: true,
+        verified: finalVerified,
+        bestMatch: bestMatch,
+        similarity: finalSimilarity,
+        verificationResults: verificationResults,
+        processingTime: Date.now(),
+        securityLevel: 'HIGH',
+        threshold: 75
+      }
+
+      console.log('🔒 MOCK VERIFICATION RESULT:', {
+        verified: finalResult.verified,
+        similarity: finalResult.similarity + '%',
+        securityThreshold: '75%',
+        bestMatchFinger: finalResult.bestMatch?.fingerindex || 'none',
+        totalTemplatesCompared: registeredTemplates.length,
+        securityStatus: finalResult.verified ? '✅ SECURE VERIFICATION' : '❌ REJECTED - Below security threshold'
+      })
+
+      return finalResult
+
+    } catch (error) {
+      console.error('❌ Mock fingerprint verification error:', error)
+      return {
+        success: false,
+        verified: false,
+        similarity: 0,
+        error: error.message
+      }
+    }
+  }
+
   destroy() {
     if (this.acquisitionInProgress) {
       this.stopAcquisition()

@@ -3,8 +3,8 @@
     <nav class="navbar navbar-expand-lg navbar-dark bg-primary">
       <div class="container">
         <router-link class="navbar-brand" to="/">
-          <i class="bi bi-fingerprint"></i>
-          Fingerprint Attendance
+          <img src="/images/log 192x192.png" alt="Zen Fingerscan Apps" width="30" height="30" class="d-inline-block align-text-top me-2">
+          Zen Fingerscan Apps
         </router-link>
 
         <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
@@ -15,13 +15,13 @@
           <ul class="navbar-nav ms-auto">
             <li class="nav-item">
               <router-link class="nav-link" to="/">
-                <i class="bi bi-person-plus"></i> Register Fingerprint
+                <i class="bi bi-clock-history"></i> Attendance
               </router-link>
             </li>
             <li class="nav-item">
-              <router-link class="nav-link" to="/attendance">
-                <i class="bi bi-clock-history"></i> Attendance
-              </router-link>
+              <a class="nav-link" href="#" @click.prevent="navigateToRegister">
+                <i class="bi bi-person-plus"></i> Register Fingerprint
+              </a>
             </li>
           </ul>
         </div>
@@ -36,16 +36,105 @@
     <footer class="bg-light text-center py-3 mt-5">
       <div class="container">
         <p class="text-muted mb-0">
-          Fingerprint Attendance System &copy; 2024
+          Zen Fingerscan Apps v.1.1 &copy; 2025
         </p>
       </div>
     </footer>
   </div>
+
+  <!-- Password Modal -->
+  <div class="modal fade" id="passwordModal" tabindex="-1" ref="passwordModalRef">
+    <div class="modal-dialog">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h5 class="modal-title">
+            <i class="bi bi-lock"></i>
+            Password Required
+          </h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+        </div>
+        <div class="modal-body">
+          <p>Please enter the password to access the Register Fingerprint module:</p>
+          <div class="form-group">
+            <input
+              v-model="password"
+              type="password"
+              class="form-control"
+              placeholder="Enter password"
+              @keyup.enter="submitPassword"
+              ref="passwordInputRef"
+            >
+            <small v-if="passwordError" class="text-danger">
+              {{ passwordError }}
+            </small>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
+            Cancel
+          </button>
+          <button type="button" class="btn btn-primary" @click="submitPassword" :disabled="!password">
+            <i class="bi bi-unlock"></i>
+            Unlock
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
 </template>
 
 <script>
+import { ref } from 'vue'
+import { useRouter } from 'vue-router'
+import { Modal } from 'bootstrap'
+
 export default {
-  name: 'App'
+  name: 'App',
+  setup() {
+    const router = useRouter()
+    const password = ref('')
+    const passwordError = ref('')
+    const passwordModalRef = ref(null)
+    const passwordInputRef = ref(null)
+    let passwordModal = null
+
+    const navigateToRegister = () => {
+      password.value = ''
+      passwordError.value = ''
+
+      // Create or get modal instance
+      if (passwordModalRef.value) {
+        passwordModal = new Modal(passwordModalRef.value)
+        passwordModal.show()
+
+        // Focus input after modal is shown
+        setTimeout(() => {
+          passwordInputRef.value?.focus()
+        }, 500)
+      }
+    }
+
+    const submitPassword = () => {
+      if (password.value === 'ZenSpa168') {
+        passwordError.value = ''
+        passwordModal?.hide()
+        router.push('/register')
+      } else {
+        passwordError.value = 'Incorrect password. Please try again.'
+        password.value = ''
+        passwordInputRef.value?.focus()
+      }
+    }
+
+    return {
+      password,
+      passwordError,
+      passwordModalRef,
+      passwordInputRef,
+      navigateToRegister,
+      submitPassword
+    }
+  }
 }
 </script>
 

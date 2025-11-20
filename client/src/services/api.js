@@ -1,6 +1,6 @@
 import axios from 'axios'
 
-const API_BASE_URL = process.env.VUE_APP_API_URL || 'http://localhost:3000/api'
+const API_BASE_URL = process.env.VUE_APP_API_URL || 'http://localhost:3001/api'
 
 // Create axios instance with default configuration
 const apiClient = axios.create({
@@ -111,25 +111,22 @@ export const apiService = {
   },
 
   // Verify Fingerprint (for attendance - compare scanned fingerprint with registered template)
-  async verifyFingerprint(scannedFingerprint, registeredTemplate) {
-    console.log('🔍 API SERVICE: verifyFingerprint for attendance called')
-    console.log('📤 API SERVICE: Sending data:', {
-      scannedFingerprintExists: !!scannedFingerprint,
-      scannedFingerprintLength: scannedFingerprint ? scannedFingerprint.length : 0,
-      registeredTemplateExists: !!registeredTemplate,
-      registeredTemplateLength: registeredTemplate ? registeredTemplate.length : 0
+  async verifyFingerprint(verificationData) {
+    console.log('🛡️ API SERVICE: SECURE verifyFingerprint for attendance called')
+    console.log('📤 API SERVICE: Sending SECURE verification data:', {
+      karyawanid: verificationData.karyawanid,
+      hasScannedFingerprint: !!verificationData.scannedFingerprint,
+      scannedFingerprintLength: verificationData.scannedFingerprint ? verificationData.scannedFingerprint.length : 0,
+      verificationType: verificationData.verificationType || 'attendance'
     })
 
     try {
-      console.log('🌐 API SERVICE: Making POST request to /verify-fingerprint')
-      const response = await apiClient.post('/verify-fingerprint', {
-        scannedFingerprint: scannedFingerprint,
-        registeredTemplate: registeredTemplate
-      })
-      console.log('✅ API SERVICE: Verification request successful, response:', response)
+      console.log('🛡️ API SERVICE: Making SECURE POST request to /verify-fingerprint')
+      const response = await apiClient.post('/verify-fingerprint', verificationData)
+      console.log('✅ API SERVICE: SECURE verification request successful, response:', response)
       return response
     } catch (error) {
-      console.error('💥 API SERVICE: Verification request failed:', error)
+      console.error('💥 API SERVICE: SECURE verification request failed:', error)
       console.error('💥 API SERVICE: Error response:', error.response?.data)
       console.error('💥 API SERVICE: Error status:', error.response?.status)
       console.error('💥 API SERVICE: Error message:', error.message)
@@ -163,6 +160,20 @@ export const apiService = {
       console.error('💥 API SERVICE: Error status:', error.response?.status)
       console.error('💥 API SERVICE: Error message:', error.message)
       throw error
+    }
+  },
+
+  // Log Attendance Verification (for audit trail)
+  async logAttendanceVerification(verificationData) {
+    try {
+      console.log('📝 API SERVICE: Logging attendance verification for audit trail...')
+      const response = await apiClient.post('/log-attendance-verification', verificationData)
+      console.log('✅ API SERVICE: Attendance verification logged successfully')
+      return response
+    } catch (error) {
+      console.warn('⚠️ API SERVICE: Failed to log attendance verification:', error.message)
+      // Don't throw error - logging failure shouldn't stop attendance process
+      return { success: false, message: 'Logging failed but attendance continued' }
     }
   },
 

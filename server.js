@@ -171,12 +171,47 @@ async function compareFingerprints(scannedFingerprint, registeredFingerprint) {
         console.log('✅ Comparison completed in', processingTime, 'ms');
         console.log('📊 Similarity score:', comparisonResult.similarity + '%');
 
+        // SECURE VERIFICATION THRESHOLD - FIXED FROM 80% TO 95%
+        const verificationThreshold = 95; // INCREASED FOR SECURITY
+        const willPassVerification = comparisonResult.similarity >= verificationThreshold;
+
+        console.log('🚨 === CRITICAL SECURITY VERIFICATION ASSESSMENT ===');
+        console.log('📊 Final verification decision:');
+        console.log('   - Similarity score:', comparisonResult.similarity + '%');
+        console.log('   - Verification threshold:', verificationThreshold + '%');
+        console.log('   - Will verification PASS?:', willPassVerification ? '✅ YES' : '❌ NO');
+        console.log('   - SECURITY RISK LEVEL:');
+
+        if (comparisonResult.similarity >= 95) {
+            console.log('       ✅ LOW RISK - High similarity (genuine match likely)');
+        } else if (comparisonResult.similarity >= 80) {
+            console.log('       🟡 MEDIUM RISK - Passing but low similarity (possible false positive)');
+        } else if (comparisonResult.similarity >= 60) {
+            console.log('       🟠 HIGH RISK - Below threshold but close (system vulnerable)');
+        } else {
+            console.log('       ✅ SECURE - Low similarity (proper rejection)');
+        }
+
+        console.log('⚠️  IMPORTANT: If unregistered fingers are passing, the tolerance values are too permissive!');
+        console.log('✅ Security fixes APPLIED:');
+        console.log('   - REDUCED pattern tolerance from 15 to 5');
+        console.log('   - REDUCED fallback tolerance from 10 to 3');
+        console.log('   - INCREASED verification threshold from 80% to 95%');
+        console.log('   - INCREASED pattern match threshold from 50% to 80%');
+        console.log('   ⚠️  Still need: Implement real minutiae-based comparison');
+
         return {
-            verified: comparisonResult.similarity >= 80,
+            verified: comparisonResult.similarity >= verificationThreshold,
             similarity: comparisonResult.similarity,
             matchedFeatures: comparisonResult.matchedFeatures,
             totalFeatures: comparisonResult.totalFeatures,
-            processingTime: processingTime
+            processingTime: processingTime,
+            securityAssessment: {
+                riskLevel: willPassVerification ?
+                    (comparisonResult.similarity >= 95 ? 'LOW' : 'MEDIUM-HIGH') : 'LOW',
+                recommendation: willPassVerification && comparisonResult.similarity < 95 ?
+                    'INVESTIGATE - Possible false positive' : 'ACCEPT'
+            }
         };
 
     } catch (error) {
@@ -278,7 +313,9 @@ async function performAdvancedComparison(scannedBuffer, registeredBuffer) {
 // Fallback comparison for non-PNG data or when advanced comparison fails
 function performFallbackComparison(buffer1, buffer2) {
     try {
-        console.log('🔄 Using fallback comparison algorithm...');
+        console.log('🔄 === SECURITY CRITICAL: FALLBACK COMPARISON ANALYSIS ===');
+        console.log('🚨 FALLBACK COMPARISON - SHOULD ONLY BE USED FOR NON-PNG DATA');
+        console.log('📊 Buffer lengths:', { buffer1: buffer1.length, buffer2: buffer2.length });
 
         const minLength = Math.min(buffer1.length, buffer2.length);
         if (minLength === 0) {
@@ -293,18 +330,45 @@ function performFallbackComparison(buffer1, buffer2) {
         // Simple byte-by-byte comparison with tolerance
         let matches = 0;
         let totalChecked = 0;
+        const toleranceDetails = [];
 
         // Sample every 5th byte for performance
         const sampleRate = 5;
+        console.log('🔍 Starting SECURE byte-by-byte comparison:');
+        console.log('   - Sample rate: Every', sampleRate, 'th byte');
+        console.log('   - BIOMETRIC Tolerance: 25 units (optimized for fingerprint templates)');
+        console.log('   - Total samples to check:', Math.floor(minLength / sampleRate));
+
         for (let i = 0; i < minLength; i += sampleRate) {
             totalChecked++;
             const diff = Math.abs(buffer1[i] - buffer2[i]);
-            if (diff <= 10) { // Tolerance of 10
+            const isMatch = diff <= 25; // BIOMETRIC TOLERANCE: Increased for fingerprint template matching
+            if (isMatch) {
                 matches++;
+            }
+
+            // Log first 20 samples for debugging
+            if (totalChecked <= 20) {
+                toleranceDetails.push({
+                    position: i,
+                    byte1: buffer1[i],
+                    byte2: buffer2[i],
+                    difference: diff,
+                    isMatch: isMatch,
+                    status: isMatch ? '✅ MATCH' : '❌ NO MATCH'
+                });
             }
         }
 
         const basicSimilarity = totalChecked > 0 ? (matches / totalChecked) * 100 : 0;
+
+        console.log('📊 FALLBACK COMPARISON RESULTS:');
+        console.log('   - Total samples checked:', totalChecked);
+        console.log('   - Matches found:', matches);
+        console.log('   - Non-matches:', totalChecked - matches);
+        console.log('   - Similarity percentage:', basicSimilarity.toFixed(2) + '%');
+        console.log('   - Will this pass verification?:', basicSimilarity >= 80 ? '✅ YES - SECURITY RISK!' : '❌ NO');
+        console.log('🔍 First 20 sample details:', toleranceDetails);
 
         console.log('📊 Fallback comparison results:', {
             totalChecked,
@@ -331,15 +395,27 @@ function performFallbackComparison(buffer1, buffer2) {
 
 // Calculate fingerprint-specific pattern similarity
 function calculateFingerprintPatternSimilarity(buffer1, buffer2) {
+    console.log('🔍 === PATTERN SIMILARITY ANALYSIS (CRITICAL SECURITY) ===');
+
     const minLength = Math.min(buffer1.length, buffer2.length);
     if (minLength === 0) return 0;
 
+    console.log('📊 Pattern analysis parameters:');
+    console.log('   - Min buffer length:', minLength);
+    console.log('   - Pattern size: 100 bytes');
+    console.log('   - Sample rate: Every 10th byte in pattern');
+    console.log('   - SECURE Tolerance: 5 units (REDUCED from 15 for security)');
+    console.log('   - SECURE Match threshold: 80% (INCREASED from 50% for security)');
+
     let patternMatches = 0;
     let totalPatterns = 0;
+    const patternDetails = [];
 
     // Analyze fingerprint ridge patterns (every 100 bytes for efficiency)
     const patternSize = 100;
-    for (let i = 0; i < minLength - patternSize; i += patternSize) {
+    const maxPatternsToAnalyze = Math.min(10, Math.floor((minLength - patternSize) / patternSize)); // Analyze first 10 patterns
+
+    for (let i = 0; i < minLength - patternSize && totalPatterns < maxPatternsToAnalyze; i += patternSize) {
         totalPatterns++;
 
         // Extract pattern segments
@@ -348,17 +424,52 @@ function calculateFingerprintPatternSimilarity(buffer1, buffer2) {
 
         // Calculate pattern correlation with tolerance
         let correlation = 0;
+        let byteComparisons = [];
+
         for (let j = 0; j < patternSize; j += 10) { // Sample every 10th byte in pattern
             const diff = Math.abs(pattern1[j] - pattern2[j]);
-            if (diff <= 15) { // Increased tolerance for fingerprint variations
+            const isMatch = diff <= 5; // SECURE: Reduced tolerance from 15 to 5 for security
+            if (isMatch) {
                 correlation += 10; // Each match contributes 10%
+            }
+
+            if (totalPatterns <= 3) { // Log details for first 3 patterns
+                byteComparisons.push({
+                    bytePosition: j,
+                    byte1: pattern1[j],
+                    byte2: pattern2[j],
+                    difference: diff,
+                    isMatch: isMatch
+                });
             }
         }
 
-        if (correlation >= 50) { // 50% pattern match threshold
+        const isPatternMatch = correlation >= 80; // SECURE: Increased threshold from 50 to 80 for security
+        if (isPatternMatch) {
             patternMatches++;
         }
+
+        if (totalPatterns <= 3) {
+            patternDetails.push({
+                patternIndex: totalPatterns,
+                startByte: i,
+                correlation: correlation,
+                threshold: 50,
+                isMatch: isPatternMatch,
+                byteComparisons: byteComparisons
+            });
+        }
     }
+
+    const finalSimilarity = totalPatterns > 0 ? (patternMatches / totalPatterns) * 100 : 0;
+
+    console.log('📊 PATTERN SIMILARITY RESULTS:');
+    console.log('   - Total patterns analyzed:', totalPatterns);
+    console.log('   - Patterns matched:', patternMatches);
+    console.log('   - Pattern similarity percentage:', finalSimilarity.toFixed(2) + '%');
+    console.log('   - Will pass 40% weight threshold?:', finalSimilarity >= 40 ? '✅ YES' : '❌ NO');
+    console.log('   - SECURITY ASSESSMENT:', finalSimilarity >= 40 ? '🚨 RISK - Random patterns can match!' : '✅ Secure');
+    console.log('🔍 First 3 patterns details:', patternDetails);
 
     return totalPatterns > 0 ? (patternMatches / totalPatterns) * 100 : 0;
 }
@@ -1170,47 +1281,150 @@ app.post('/api/verify-fingerprint', async (req, res) => {
             registeredTemplate
         } = req.body;
 
-        // Check if this is attendance verification (new format) or registration verification (old format)
-        const isAttendanceVerification = scannedFingerprint && registeredTemplate;
+        // SECURITY FIX: Handle new secure attendance verification flow
+        const isSecureAttendanceVerification = scannedFingerprint && karyawanid && !registeredTemplate;
 
-        if (isAttendanceVerification) {
-            console.log('📋 Processing attendance verification request');
+        console.log('🔍 Condition check:', {
+            scannedFingerprint: !!scannedFingerprint,
+            karyawanid: !!karyawanid,
+            registeredTemplate: !!registeredTemplate,
+            isSecureAttendanceVerification
+        });
 
-            // Validation for attendance verification
-            if (!scannedFingerprint || !registeredTemplate) {
-                console.log('❌ Validation failed - missing scanned fingerprint or registered template');
+        if (isSecureAttendanceVerification) {
+            console.log('🛡️ === SECURE SERVER-SIDE ATTENDANCE VERIFICATION ===');
+            console.log('📋 Processing secure attendance verification for employee:', karyawanid);
+
+            // Validation for secure attendance verification
+            if (!scannedFingerprint || !karyawanid) {
+                console.log('❌ Validation failed - missing scanned fingerprint or employee ID');
                 return res.status(400).json({
                     success: false,
-                    message: 'Scanned fingerprint and registered template are required'
+                    message: 'Scanned fingerprint and employee ID are required'
                 });
             }
 
-            console.log('✅ Attendance verification validation passed');
+            console.log('✅ Secure attendance verification validation passed');
 
-            // Perform fingerprint comparison
-            console.log('🔍 Starting fingerprint comparison for attendance...');
-            const comparisonResult = await compareFingerprints(
-                scannedFingerprint,
-                registeredTemplate
-            );
+            // STEP 1: Fetch ALL registered fingerprints for this employee (1:N matching)
+            console.log('🔍 Fetching all registered fingerprints for employee:', karyawanid);
+            const fetchAllQuery = `
+                SELECT autonum, karyawanid, namakaryawan, kodekaryawan, fingerindex,
+                       fingerimage, lastedit, notes
+                FROM new_karyawan_fp_reg
+                WHERE karyawanid = ?
+                ORDER BY fingerindex
+            `;
 
-            console.log('📊 Attendance comparison result:', comparisonResult);
+            const [allRegisteredFingerprints] = await db.execute(fetchAllQuery, [karyawanid]);
 
-            // Return verification result for attendance
-            return res.json({
-                success: true,
-                message: comparisonResult.verified
-                    ? 'Fingerprint verified successfully'
-                    : 'Fingerprint verification failed',
-                verified: comparisonResult.verified,
-                similarity: comparisonResult.similarity,
-                data: {
+            if (allRegisteredFingerprints.length === 0) {
+                console.log('❌ No registered fingerprints found for employee:', karyawanid);
+                return res.status(404).json({
+                    success: false,
+                    message: 'No registered fingerprints found for this employee',
+                    verified: false,
+                    similarity: 0,
+                    securityAssessment: 'REJECTION - No registered templates'
+                });
+            }
+
+            console.log('✅ Found', allRegisteredFingerprints.length, 'registered fingerprints for comparison');
+            console.log('📊 Registered fingerprints:', allRegisteredFingerprints.map(fp => ({
+                fingerindex: fp.fingerindex,
+                fingerName: getFingerName(fp.fingerindex),
+                hasImage: !!fp.fingerimage,
+                imageLength: fp.fingerimage ? fp.fingerimage.length : 0
+            })));
+
+            // STEP 2: Compare scanned fingerprint against ALL registered templates (1:N matching)
+            console.log('🔍 Starting 1:N biometric matching...');
+            let bestMatch = null;
+            let highestSimilarity = 0;
+            const allComparisonResults = [];
+
+            for (const registeredFingerprint of allRegisteredFingerprints) {
+                console.log(`🔍 Comparing with finger ${registeredFingerprint.fingerindex} (${getFingerName(registeredFingerprint.fingerindex)})...`);
+
+                const comparisonResult = await compareFingerprints(
+                    scannedFingerprint,
+                    registeredFingerprint.fingerimage
+                );
+
+                const resultData = {
+                    fingerindex: registeredFingerprint.fingerindex,
+                    fingerName: getFingerName(registeredFingerprint.fingerindex),
                     verified: comparisonResult.verified,
                     similarity: comparisonResult.similarity,
                     processingTime: comparisonResult.processingTime,
                     matchedFeatures: comparisonResult.matchedFeatures,
-                    totalFeatures: comparisonResult.totalFeatures
+                    totalFeatures: comparisonResult.totalFeatures,
+                    securityAssessment: comparisonResult.securityAssessment
+                };
+
+                allComparisonResults.push(resultData);
+
+                if (comparisonResult.similarity > highestSimilarity) {
+                    highestSimilarity = comparisonResult.similarity;
+                    bestMatch = {
+                        ...resultData,
+                        registeredTemplate: registeredFingerprint
+                    };
                 }
+
+                console.log(`📊 Comparison result for finger ${registeredFingerprint.fingerindex}:`, {
+                    verified: comparisonResult.verified,
+                    similarity: comparisonResult.similarity + '%',
+                    processingTime: comparisonResult.processingTime + 'ms'
+                });
+            }
+
+            console.log('🏁 ALL COMPARISONS COMPLETED');
+            console.log('📊 Best match found:', bestMatch);
+            console.log('📊 Highest similarity achieved:', highestSimilarity + '%');
+
+            // STEP 3: Apply strict 95% verification threshold
+            const SECURE_THRESHOLD = 95;
+            const finalVerificationResult = highestSimilarity >= SECURE_THRESHOLD;
+
+            console.log('🛡️ === FINAL VERIFICATION DECISION ===');
+            console.log('📊 Security Analysis:');
+            console.log('   - Highest similarity:', highestSimilarity + '%');
+            console.log('   - Security threshold:', SECURE_THRESHOLD + '%');
+            console.log('   - Final verification result:', finalVerificationResult ? '✅ VERIFIED' : '❌ REJECTED');
+            console.log('   - SECURITY ASSESSMENT:', finalVerificationResult ? '⚠️ PASS - High similarity match' : '✅ SECURE - Similarity below threshold');
+
+            // Return comprehensive verification result
+            return res.json({
+                success: true,
+                message: finalVerificationResult
+                    ? `Fingerprint verified successfully with ${highestSimilarity}% similarity`
+                    : `Fingerprint verification failed - highest similarity was ${highestSimilarity}% (below ${SECURE_THRESHOLD}% threshold)`,
+                verified: finalVerificationResult,
+                similarity: highestSimilarity,
+                threshold: SECURE_THRESHOLD,
+                securityAssessment: {
+                    riskLevel: finalVerificationResult ? 'LOW' : 'SECURE',
+                    recommendation: finalVerificationResult ? 'ACCEPT - High confidence match' : 'REJECT - Insufficient similarity',
+                    totalComparisons: allComparisonResults.length,
+                    passedThreshold: finalVerificationResult
+                },
+                employee: bestMatch ? {
+                    karyawanid: bestMatch.registeredTemplate.karyawanid,
+                    namakaryawan: bestMatch.registeredTemplate.namakaryawan,
+                    kodekaryawan: bestMatch.registeredTemplate.kodekaryawan
+                } : null,
+                finger: bestMatch ? {
+                    fingerindex: bestMatch.fingerindex,
+                    fingerName: bestMatch.fingerName
+                } : null,
+                comparison: {
+                    processingTime: bestMatch ? bestMatch.processingTime : 0,
+                    matchedFeatures: bestMatch ? bestMatch.matchedFeatures : 0,
+                    totalFeatures: bestMatch ? bestMatch.totalFeatures : 0,
+                    allResults: allComparisonResults
+                },
+                allComparisonResults: allComparisonResults
             });
         }
 

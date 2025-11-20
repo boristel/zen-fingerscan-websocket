@@ -132,3 +132,80 @@ but on attendance module, after start scan to verify, on console got error, all 
 REMEMBER
 - Don't touch other procedures, focus on the procedure that will be implemented
 - Don't  run command "npm run dev", i've already run it 
+
+Final Step : 
+to do : 
+* Set Attendance module as Main layout when the the application start.
+* For Register Module, set password to open the module with password "ZenSpa168" so that not just anyone can operate it.
+* used `C:\Users\boris\Documents\zen\NEW FP\_SAMPLE\fingerprint-attendance-vue\client\public\images\favicon.ico` as icon for the application
+* change application name to "Zen Fingerscan Apps v.1.1" and used `C:\Users\boris\Documents\zen\NEW FP\_SAMPLE\fingerprint-attendance-vue\client\public\images\log 192x192.png` as application logo
+
+- Don't  run command "npm run dev", i've already run it
+
+
+> both test 1 and test 2 are passed, which should not.
+  - test 1 is to verify the registered user with finger and turn result with verified.
+  - at the other hand test 2 was intended to verify such unregistered user with finger and turns result with verified, this is anomaly that required to examinations and evaluations to
+  relevant logics and/or code implementations systematically, properly, correctly, accurately, precisely, and accordingly.
+
+  refer to check carefully logs copied into `C:\Users\boris\Documents\zen\NEW FP\_SAMPLE\fingerprint-attendance-vue\chromelogs.md`.
+  @/C:\Users\boris\Documents\zen\NEW FP\_SAMPLE\fingerprint-attendance-vue\chromelogs.md
+   
+
+
+ let paused/pending our todo/task for such discussions.
+  1. think hard while do deeper investigations, examinations and evaluations within our code implementations regarding the algorithm/logic you have been made to compare biometric between       
+  fingerscan image on the attendace module and stored data/image on database, and logic to build similarity. Let me know systematically, correctly, accurately, precisely, and accordingly.      
+  2. Do deeper online researches regarding biometric registration, verification or validation base on our cases and real world best practices and use-cases.
+
+  feel free to use any available tool, such as : fetch, gitmcp, context7, or any other relevan tool. try github.com to found such existing project as reference and build your knowledges.       
+  finally do document results with some works through context above into `MANAGE-BIOMETRIC.md`
+
+  By analyse the `VERIFY-BIOMETRIC.md` we may should to follow the instry best practices as mentioned in the document, which more proper and systematic.
+  Do deeper investigations, examinations and evaluations on our code implementations regarding our existing codebase and code implementations to scaffold and build structures for the backend   
+  services within directory `backend/`, and then take the `server.js` as references and guidelines to breakdowns systematically, properly, correctly, accurately, and accordingly into the       
+  scaffoled backend structures to provides industry standatd to manage complete functionalities to coverage all workflows of user (employee), biometrics, verification/validation, and more.     
+
+  Make senses? Do think hard understandings and analysis reasoning and purposes with contexts above, then let me know your thoughts, so we are in the same page (thoughts) before continue with  
+  implementations!. Confirm me!
+
+Attendance tested with 2 procedure and get results that are not desired and should not happen : 
+test 1 : Scan attendance with registered finger using id "0046"
+test 2 : Scan attendance with un-registered finger using id id "0046"
+both test 1 and test 2 are passed with similarity over 80% , which should not.
+  - test 1 is to verify the registered user with finger and turn result with verified.
+  - at the other hand test 2 was intended to verify such unregistered user with finger and turns result with verified, this is anomaly that required to examinations and evaluations to relevant logics and/or code implementations systematically, properly, correctly, accurately, precisely, and accordingly. 
+
+  It seems like the problem is still the same in the biometric/finger scan image comparison process. 
+  
+  1. Elaborate me how the flow comparing method or process, so i can help to investigate the flow, the compare method must on server side not on client side.
+  2. think hard while do deeper investigations, examinations and evaluations within our code implementations regarding the algorithm/logic you have been made to compare biometric between  fingerscan image on the attendace module and stored data/image on database using industry standard and best practices, and logic to build similarity. Let me know systematically, correctly, accurately, precisely, and accordingly.
+  3. Do deeper online researches regarding biometric registration, verification or validation base on our cases and real world best practices and use-cases.
+  4. feel free to use any available tool, such as : fetch, gitmcp, context7, or any other relevan tool. try github.com to found such existing project as reference and build your knowledges.
+  5. implement what has been learned and analyzed to our project
+
+  Do not give up so soon and jump to a conclusion that end the debugging and tracing process, have you try with adding log with more details information to help investigates workflows or processing are correctly, accurately, and accordingly as expectations?
+
+  Now the frontend appeared,, but the issue : 
+  - Can open any sidebar menu
+  - Can not search employee  
+  - console logs pasted at `errorlogs.md`
+  
+  let's simplyfy the frontend layout and return to initial goals/purpose
+* Application has 2 Main Module : Attendance Module and Registration Module
+* This application is intended for daily employee attendance, so no need login, session or authorization or other security procedure. The main page show must Attendance module.
+* On Registration Module, to access the page, user need to insert password "ZenSpa168" so not every employee can access Registration Page.
+
+The layout must as simple as I have explained above, application only have 2 menu, Attendance and Registration, ove the others. 
+Avoid assuming or making assumption or mismatch/incorrect or hallucinating. focus on what I have explained above
+
+Attendance tested with 2 procedure and get results that are not desired and should not happen : 
+test 1 : Scan attendance with registered finger using id "00049"
+test 2 : Scan attendance with un-registered finger using id id "00049"
+both test 1 and test 2 are NOT passed and the verification failed.
+logs pasted at `perintah.md`
+
+
+
+
+
